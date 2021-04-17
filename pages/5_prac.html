@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../style.css" />
+<title>Google Earth Engine for Ecology and Conservation</title>
+</head>
+
+<body>
+
+<div id="wrap">
+<div id="header">
+<h1>GOOGLE EARTH ENGINE APPLICATIONS</h1>
+<h1>IN ECOLOGY AND CONSERVATION</h1>
+</div>
+
+<div id="content">
+<h2>GOOGLE EARTH ENGINE FOR IN ECOLOGY AND CONSERVATION</h2>
+<p><strong>Practical 5: Fire frequency in the Kruger National Park, South Africa</strong>
+<br>
+Access the completed practical script <a href="https://code.earthengine.google.com/63ca391e02cb163916a03a2c45200359?noload=true">here</a>.<br>
+Also please download the following shapefile delineating <a href="https://drive.google.com/file/d/1Acs8PLINsehpsZvDj-g9BnAkLuVYKVv3/view?usp=sharing">regional boundaries</a> in Kruger.
+<br><br>
+<strong>Learning Objectives</strong>
+By the end of this practical you should be able to:
+<br>
+<ol>
+<li>Access terrain model data from SRTM</li>
+<li>Access monthly burn scar data</li>
+<li>Generate a hillshade using SRTM data</li>
+<li>Explore long-term patterns of fire frequency</li>
+<li>Build an animation and output for use in, for example, PowerPoint presentations</li>
+</ol>
+<hr>
+<p><strong>Introduction</strong>
+Fire is an important driver of landscape pattern, as different fire regimes directly affect biomass production, composition and structure of vegetation. 
+Indirectly, and together with other landscape features like geology, rainfall and topography, fire also influences animal distribution patterns. 
+In savanna systems, interactions between herbivory, fire frequency, fire intensity and season can alter tree:grass ratios and system states. 
+For example, in the Kruger National Park (Kruger) landscapes that are burnt frequently by high intensity fires generally have less woody cover than those 
+burnt less frequently, at low intensities. Fire regime can also influence vegetation composition, where fire adapted species may dominate in frequently burnt areas, 
+while those areas less frequently burnt may provide important refugia for more fire sensitive species (Smit et al. 2013). 
+Fire is therefore an important component for biodiversity conservation planning but how do we find information about fire frequencies, 
+intensities and seasons for our areas of interest if we haven’t monitored it directly? 
+ GEE has a number of different <a href="https://developers.google.com/earth-engine/datasets/tags/fire">datasets tagged &quot;fire&quot;</a>. 
+We'll just be looking at one in this practical but I encourage you to explore the others in your own time. Let’s get started……</p>
+<hr>
+<p><strong>Data import</strong>
+In addition to datasets available on Google Earth Engine, in this practical we will learn how to import shapefiles from your local hard-drive into GEE by 
+uploading them as new assets (Fig. 1).</p>
+
+<pre><p><code class="javascript" id="target1">var dem = ee.Image("CGIAR/SRTM90_V4");
+var FireCCI = ee.ImageCollection('ESA/CCI/FireCCI/5_1');</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+  
+<p>The first dataset, <a href="https://developers.google.com/earth-engine/datasets/catalog/CGIAR_SRTM90_V4">SRTM90</a>, is a Digital Elevation Model (DEM) from the Shuttle Radar Topography Mission (SRTM). The second, <a href="https://developers.google.com/earth-engine/datasets/catalog/ESA_CCI_FireCCI_5_1">FireCCI51</a>, is a Fire_cci Burned Area pixel product version 5.1 from MODIS. Figure 1 below, describes how to import the boundary shapefile for the Kruger National Park (Kruger) from files stored locally on your hard-drive. You can download and save the required files from <a href="https://drive.google.com/file/d/1omD5vPk4LMQSnC2BHJCg6GlnmpzBsFQG/view?usp=sharing">here</a>.</p>
+<p><img src="/img/prac6_f1.png" alt="">
+<strong>Figure 1:</strong> Process to upload a shapefile into GEE as a new assest imported into the script as a FeatureColection</p>
+<hr>
+<p><strong>Filtering data</strong>
+First define your variables for the temporal and spatial windows of interest. We will use these variables to filter our data before processing.</p>
+
+<pre><p><code class="javascript" id="target1">var startDate = ee.Date.fromYMD(2001,1,1);
+var endDate = ee.Date.fromYMD(2018,12,31);
+var years = ee.List(fire.aggregate_array('year')).distinct().sort();
+
+var knp_geo = knp.geometry();
+var srtm = dem.clipToCollection(knp);
+
+var fire = FireCCI
+    .filterBounds(knp_geo)
+    .filterDate(startDate, endDate)
+    .map(function(img) { // This function adds year as property to each image
+      return img.set('year', ee.Image(img).date().get('year'));
+  });</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+<hr>
+<p><strong>Processing</strong>
+Now build a function to remove all burn scars from the fire dataset that have a confidence interval of less than 50%.</p> 
+ 
+<pre><p><code class="javascript" id="target1">// Define a function to remove all fires <50% confidence interval
+var confMask = function(img) {
+  var conf = img.select('ConfidenceLevel');
+  var level = conf.gt(50);
+  return img.updateMask(level).select('BurnDate'); //return only 'BurnDate' band};</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+  
+<p>Run the function and summarise the burn scars by the day-of-year (doy) most frequently burnt, followed by the the frequency areas are burnt in Kruger annually from 2001 until 2018.</p>
+<pre><p><code class="javascript" id="target1">// Most frequently burnt DOY
+var fireDOY_list = years.map(function(year) {
+  return fire
+    .filterMetadata('year', 'equals', year) // Filter image collection by year
+    .map(confMask) // Apply confidence mask >50%
+    .reduce(ee.Reducer.mode()).rename('fire_doy') 
+ // Reduce image collection by most common DOY
+    .set('year', year) // Set composite year as an image property
+    .set('system:time_start', ee.Date.fromYMD(year, 1, 1));
+});
+var doyFires = ee.ImageCollection.fromImages(fireDOY_list); 
+// Convert the image List back to an ImageCollection
+
+// Frequency of days burnt
+var fireCnt_list = years.map(function(year) {
+  return fire
+    .filterMetadata('year', 'equals', year) // Filter image collection by year
+    .map(confMask) // Apply confidence mask >50%
+    .reduce(ee.Reducer.countDistinct()) 
+ // Reduce image collection by count distinct doy
+    .set('year', year) ));// Set composite year as an image property
+    .set('system:time_start', ee.Date.fromYMD(year, 1, 1
+});
+var cntFiresDOY = ee.ImageCollection.fromImages(fireCnt_list); 
+// Convert the image List back to an ImageCollection</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+  
+</div>
+
+<div id="sidebar">
+<h3>MENU</h3>
+<ul>
+<li><a href="../index.html">HOME</a></li>
+<nav class="drop-down-menu">
+<input type="checkbox" class="activate" id="accordion-1" name="accordion-1">
+<label for="accordion-1" class="menu-title">> COURSE 2020</label>
+<div class="drop-down">
+<li><a href="">Check again later</a></li>
+</div>
+</nav>
+<nav class="drop-down-menu">
+<input type="checkbox" class="activate" id="accordion-2" name="accordion-2">
+<label for="accordion-2" class="menu-title">> COURSE 2021</label>
+<div class="drop-down">
+<li><a href="1_prac.html">[Prac1] Getting started</a></li>
+<li><a href="2_prac.html">[Prac2] Spectral indices</a></li>
+<li><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
+<li><a href="4_prac.html">[Prac4] Interactive App</a></li>
+<li class="selected"><a href="5_prac.html">[Prac5] Time series-Fire</a></li>
+<li><a href="6_prac.html">[Prac6] Change analysis</a></li>
+<li><a href="7_prac.html">[Prac7] Landcover class</a></li>
+<li><a href="8_prac.html">[Prac8] Species patterns</a></li>
+<li><a href="9_prac.html">[Prac9] Your own data</a></li>
+</div>
+</nav>
+<li><a href="10_contact.html">CONTACT US</a></li>
+</nav>
+</ul>
+
+<h3></h3>
+</div>
+
+<div style="clear: both;"> </div>
+<ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>	
+
+<div id="footer">
+<p>&copy; Copyright 2021 BioGIS | Designed by <a href="http://www.biogis.co.za" target="_blank">BioGIS</a></p>
+</div>
+
+</div>
+<!-- 2. Include library -->
+<script src="../clipboard.min.js"></script>
+
+<!-- 3. Instantiate clipboard -->
+<script>
+      var clipboard = new ClipboardJS('.btn');
+
+      clipboard.on('success', function (e) {
+        console.log(e);
+      });
+
+      clipboard.on('error', function (e) {
+        console.log(e);
+      });
+</script>
+
+</body>
+</html>

@@ -242,6 +242,10 @@ background: #F9F7ED; /* pale beige */
 margin-top: 20px;
 }
 
+#content img {
+padding: 0px 10px 0px 10px; 
+}
+
 #content h2 {
 margin: 0;
 color: #ffffff; /* pale pink */
@@ -252,11 +256,21 @@ padding: 0 0 0 10px;
 font-size: 16px;
 }
 
+/*#content a { 
+/* TOP RIGHT BOTTOM LEFT */
+/* padding: 0px 10px 10px 10px; 
+color: #232323;}/* also almost black */
+/* } */
+
 #content p { 
 /* TOP RIGHT BOTTOM LEFT */
-padding: 0px 10px 10px 10px; 
+padding: 0px 10px 0px 10px; 
 color: #232323;/* also almost black */
 } 
+
+#content li { 
+padding: 0px 10px 0px 0px; 
+}
 
 #content ul { 
 padding: 0 20px 10px 30px; 

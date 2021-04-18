@@ -9,25 +9,21 @@ The application of satellite derived datasets and geospatial analysis techniques
 
 Google Earth Engine (GEE) is a cloud-based computing platform which uses JavaScript commands to access and analyse planetary-scale geospatial datasets drawn from a variety of platforms. Through an internet-accessible application programming interface (API) and associated web-based interactive development environment (IDE), Google Earth Engine users are able to mine a massive collection of geospatial data for change detection, resource qualification and trend mapping on the Earth's surface like never before. The capacity of GEE to analyse remotely sensed data holds enormous potential for conservation planning and resource management. 
 
-CURRICULUM
-==========
+## CURRICULUM
 This course aims to train students, researchers and practitioners in the application of Google Earth Engine in conservation science. Specifically, it seeks to familiarize participants with the basic operation of the GEE environment, focusing on visualization, analysis and automated detection of biological patterns and processes. The course will begin with a brief review of the fundamental theory behind remote sensing and geospatial analyses, followed by a series of tutorials.
 
-REQUIREMENTS
-============
+## REQUIREMENTS
 * [Google Earth Engine Account](https://earthengine.google.com/).
 * Basic coding knowledge (e.g. R, Python, JavaScript)
 
-ITINERARY
-============
+## ITINERARY
 ourse Dates: April 19th – April 30th, 2021. 
 Sessions: 2-hour daily sessions (Monday – Friday)
 Session times: 6pm – 8pm (Standard South African Time)
 
 Each session will consist of a theoretical introduction, demonstration of code, and self-learning practicals. Recordings of the live sessions will be made available to course participants. 
 
-JavaScript
-==========
+## JavaScript
 ```js
 print(‘Hello world!’);
 ```
@@ -36,8 +32,7 @@ Most common data structures in GEE are:
 Feature [vector] = geometry & properties --> ```FeatureCollection```
 ```Dictionary```, ```List```, ```Array```, ```Date```, ```Number``` and ```String```
 
-USAGE
-=====
+## USAGE
 Free for non-commercial use
 
 

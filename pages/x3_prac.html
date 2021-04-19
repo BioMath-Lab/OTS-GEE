@@ -28,24 +28,133 @@ Access the completed practical script <a href="https://code.earthengine.google.c
 By the end of this practical you should be able to:
 <br>
 <ol>
-<li>xxxxxxxxxxxxxxxx</li>
-<li>xxxxxxxxxxxxxxxxxx</li>
-<li>xxxxxxxxxxxxxxxxxxxxxx</li>
-<li>xxxxxxxxxxxxxxxxxxxx</li>
+<li>Write a custom function</li>
+<li>Mask clouds from an image or image collection</li>
+<li>Map (loop) it over a collection</li>
+<li>Plot a time-series</li>
+<li>Export data as a csv and image</li>
 </ol>
 <hr>
 
-<p><strong>Importing datasets</strong>
-There are two ways to import datasets into the GEE code editor. We will run through both of these in this practical.
-The first method is to use the search bar. We will be using the NASA SRTM Digital Elevation Data 30m in the first half of this practical.
-In the search bar, type in elevation and select the SRTM dataset. This will also bring up the metadata for the chosen dataset.
-Take a look at the information provided regarding the processing of the data, dataset time periods, resolution of the bands,
-scaling factors (which are unique to Google’s ingestion of the data) and reference to the data source or journal article.</p>
+<p><strong>Introduction</strong>
+<br>
+      Vegetation indices, such as NDVI and EVI are a foundational for understanding phenological patterns through remote sensing. NDVI can help us differentiate
+      vegetation from other land use classes, as well as assess patterns in the vegetations' state. It is broadly used across ecological and agricultural studies 
+      that can help to simplify the complexities of multi-spectral remote-sensed imagery. In this practical, we will explore NDVI using the Sentinel-2 surface 
+      reflectance imagery. We will learn how to build our own functions, mask clouds over your image collection, calculate NDVI for your image collection, and lastly
+      export your images and results in a csv format. 
+      </p>
+<hr>
 
-<pre><p><code class="javascript" id="target1">!! add code here !!</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<p><strong>Importing & Filtering datasets</strong>
+<br>We start by creating a polygon. This can be done by using the polygon tool in the GEE code editor. We then filter the ImageCollection by time and space. 
+      Lastly, we filter it by the amount of cloud cover to remove excessively cloudy scenes. This is done using the image property called 'CLOUD_COVERAGE_PERCENTAGE'.</p>
+
+<pre><p><code class="javascript" id="target1">// Create image collection of S-2 imagery for the full year of 2019
+var s2 = ee.ImageCollection('COPERNICUS/S2_SR')
+//filter start and end date
+.filterDate('2019-01-01', '2019-12-31')
+//filter according to drawn boundary
+.filterBounds(geometry)
+// pre-filter to get less cloudy images (only keeps images with less than 20% cloudy pixels)
+.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',20))
+;</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
-</div>
 
+<p>Find the Sentinel-2 surface reflectance dataset here: <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR#description" target="_blank">Sentinel-2 MSI: MultiSpectral Instrument Level-2A</a>
+
+<p><strong>Write and Map a function</strong>
+<br>We will now use our first function. This function creates a cloud mask based on the metadata within each image of the collection. 
+      Look up the band information in the Sentinel-2 metadata. We create a variable name for the overall function called maskS2clouds. 
+      We then create a set of internal functions to apply each image in the ImageCollection. Make sure the new names variables within your function are consistent.
+<br>The information for      
+      This is the default cloud masking process provided by GEE for Sentinel 2 images, though there is now an alternative, where you can use the 
+      Sentinel-2 cloud detector library (see here for more information: <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_CLOUD_PROBABILITY" target="_blank">Sentinel-2: Cloud Probability</a>.
+<br> We then use the map() function to apply a built-in algorithm or our own function over the Sentinel-2 collection.
+      
+<pre><p><code class="javascript" id="target2">// Function to mask cloud from built-in quality band
+// information on cloud
+var maskS2clouds = function(image) {
+  var qa = image.select('QA60');
+
+  // Bits 10 and 11 are dense clouds and cirrus clouds, respectively.
+  // They are stored as bit 10 (or 2^10) and bit 11 (or 2^11), respectively. 
+  var cloudBitMask = 1 << 10;
+  var cirrusBitMask = 1 << 11;
+
+  // Both flags should be set to zero, indicating clear conditions.
+  var mask = qa.bitwiseAnd(cloudBitMask).eq(0)
+      .and(qa.bitwiseAnd(cirrusBitMask).eq(0));
+
+  return image.updateMask(mask);
+};
+
+// run the mask cloud function over each image in the s2 collection
+var s2_cloudmask = s2.map(maskS2clouds);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>      
+      
+<p>The above code is complicated, so let’s make sure we are happy with what the output. Let’s do this by plotting a unmasked vs. masked image.
+
+<pre><p><code class="javascript" id="target3">// Let's take a look at what this function is doing...
+
+// Print the unmasked dataset sorting it from the most to least cloudy image
+print(s2.sort('CLOUDY_PIXEL_PERCENTAGE', false), 'S2 collection clouds');
+
+// We can select the most cloudy image by sorting the list in descending 
+// order and selecting the first image
+Map.addLayer(s2.sort('CLOUDY_PIXEL_PERCENTAGE', false).first(), 
+              {min:0, max:3000, bands:['B4','B3','B2']}, 'Cloudy image first');
+
+// Plot the cloud mask layer QA60
+Map.addLayer(s2_cloudmask.sort('CLOUDY_PIXEL_PERCENTAGE', false).first().select('QA60'), 
+              {min:0, max: 1}, 'Cloud mask', false);
+
+// Let's now plot the image with the cloud mask applied
+Map.addLayer(s2_cloudmask.sort('CLOUDY_PIXEL_PERCENTAGE', false).first(), 
+              {min:0, max:3000, bands:['B4','B3','B2']}, 'Cloud masked image');</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>Next we will make a custom function to clip the image to our AOI and add a band to the image containing NDVI values. 
+      We will use the normalizedDifference() function and apply it over the near infra-red and red bands. 
+      Lastly, we will rename the new band to ‘NDVI’. Note that the function is now nested inside the map function. 
+      Print out the new ImageCollection to view the new band.
+
+<pre><p><code class="javascript" id="target4">/var s2_ndvi = s2_cloudmask.map(function(image) {
+    var s2_clip = image.clip(geometry)
+    return s2_clip.addBands(s2_clip.normalizedDifference(['B8', 'B4']).rename('NDVI'))
+});
+
+
+
+print(s2_ndvi, 's2 with NDVI');</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/3_img2.png" width="650" alt="" title="" />
+        
+<p><strong>Visualisation</strong>
+<br>Next we will create a time-series plot over the NDVI band of the ImageCollection. 
+      This is done using the ui.Chart series of functions. The function you chose depends on the type of data you are using. 
+      In this case, we are running an image series over a single region, so we will use ui.Chart.image.series(). 
+      The primary inputs here are: the ImageCollection, area of interest (geometry), a reducer, the band of interest, 
+      the scale and the x-axis property (which defaults to ‘system:time_start’). 
+      In GEE, calculations that summarise your data are called reducers and can be called using the ee.Reducer series of functions. 
+      Here we will use ee.Reducer.median() to calculate the median NDVI values across our area of interest.
+
+Lastly, we can specify details for the chart, including the type of chart and then label options. 
+      Run print() to see the output of the chart in your console. Hover your cursor over the chart to see interactive details. 
+      For more details on customizing your charts see: https://developers.google.com/chart/interactive/docs   
+ 
+      
+
+
+<p><strong>The last step, as always, is to save the script.</strong>
+
+<p><strong>Practical 4 Exercise</strong>
+<br>Repeat this practical but use NDVI instead of EVI and Germany instead of Costa Rica.
+You can also play around with different dates, keeping in mind the different date limits for each ImageCollection.
+To share your script, click on Get Link and then copy script path. Send your completed script to ots.online.education@gmail.com.
+If you're feeling adventurous, save the results as a new App and forward the URL link along with your script.
+Do you have any feedback for this practical? Please complete this quick (2-5 min) survey here.
 <div id="sidebar">
 <h3>MENU</h3>
 <ul>

@@ -84,7 +84,7 @@ var maskS2clouds = function(image) {
     var cirrus = qa.bitwiseAnd(Math.pow(2, 11)).eq(0);
   // bitwiseAnd() is the function to recognise we are referring to the 2^x stored Bit
   
-    var mask = clouds.and(cirrus) // add the two cloud layers together
+    var mask = clouds.and(cirrus) // add the two cloud layers together.
 
   return image.updateMask(mask);
 };

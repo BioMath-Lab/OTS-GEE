@@ -36,6 +36,8 @@ By the end of this practical you should be able to:
 </ol>
 <hr>
 
+<p><img src="img/3_img1.png" width="650" alt="" title=""/></p>
+
 <p><strong>Introduction</strong>
 <br>
 Vegetation indices, such as NDVI and EVI are foundational for understanding phenological patterns through remote sensing. NDVI can help us differentiate vegetation from other land use classes, as well as assess patterns in the vegetations' state. It is broadly used across ecological and agricultural studies that can help to simplify the complexities of multi-spectral remote-sensed imagery. In this practical, we will explore NDVI using the Sentinel-2 surface reflectance imagery. We will learn how to build our own functions, mask clouds over your image collection, calculate NDVI for your image collection, and lastly export your images and results in a csv format. 
@@ -201,7 +203,7 @@ Map.addLayer(NDVI_aug, {min:0, max:1, palette: ndvi_pal}, 'NDVI Aug');</code><bu
 <pre><p><code class="javascript" id="target9">// Create a function that takes an image, calculates the median over a
 // geometry and returns the value and the corresponding date as a feature.
 var convert_to_FC = function(image){
-      var date = image.get('system_time_start');
+      var date = image.get('system:time_start');
       var value = image.reduceRegion(ee.Reducer.median(), geometry).get('NDVI');
       var feature = ee.Feature(null, {'system:time_start': date, 
                                    'date': ee.Date(date).format('Y/M/d'), 
@@ -227,7 +229,7 @@ Export.table.toDrive({
 
 <p>3) Export the NDVI map as a raster</p>
 
-<p>Here we use one of the earlier mapped NDVI visualisations and export this directly to our Google Drive account</p>
+<p>Here we use one of the earlier mapped NDVI visualisations and export this directly to our Google Drive account. Downloading the image may allow flexibility in analysis or visualisations in different softwares.</p>
 
 <pre><p><code class="javascript" id="target11">Export.image.toDrive({
       image: NDVI_aug,
@@ -236,11 +238,13 @@ Export.table.toDrive({
     });</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
+<p>Once you have run the Export functions, you will need to go to your task tab to execute the task.</p>
+
 <hr>
 
 <p><strong>Practical Assignment #3</strong>
 
-<pre><p><code class="javascript" id="target12">// Use the Sentinel-2 data to explore the NDVI trends in a region that interests you
+<pre><p><code class="javascript" id="target12">// Use the Sentinel-2 data to explore the NDVI trends in a region/date that interests you
 // ..............................................
       
 // Delete the geometry, and create your own geometry

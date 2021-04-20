@@ -77,14 +77,14 @@ var s2 = ee.ImageCollection('COPERNICUS/S2_SR')
 var maskS2clouds = function(image) {
   var qa = image.select('QA60');
 
-  // Bits 10 and 11 are dense clouds and cirrus clouds, respectively.
-  // They are stored as bit 10 (or 2^10) and bit 11 (or 2^11), respectively. 
-  var cloudBitMask = 1 << 10;
-  var cirrusBitMask = 1 << 11;
-
-  // Both flags should be set to zero, indicating clear conditions.
-  var mask = qa.bitwiseAnd(cloudBitMask).eq(0)
-      .and(qa.bitwiseAnd(cirrusBitMask).eq(0));
+  // Information in this band is stored in Bits. Bits work in multiples of 2's
+  // Bits 10 (2^10 = 1024) and 11 (Bits 2^11 = 2048) are clouds and cirrus, respectively.
+  // These need to be set to zero i.e. .eq(0) to represent clear conditions
+    var clouds = qa.bitwiseAnd(Math.pow(2, 10)).eq(0);
+    var cirrus = qa.bitwiseAnd(Math.pow(2, 11)).eq(0);
+  // bitwiseAnd() is the function to recognise we are referring to the 2^x stored Bit
+  
+    var mask = clouds.and(cirrus) // add the two cloud layers together
 
   return image.updateMask(mask);
 };

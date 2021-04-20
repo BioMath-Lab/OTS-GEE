@@ -317,15 +317,19 @@ Map.setCenter(31.5975, -24.9945, 12);
 // Select Bands 4, 3 and 2 = red, green and blue bands to make a true-colour composite
 // Add this RGB composite to map, without defined parameters
 Map.addLayer(cop2Med, {bands:['B4','B3','B2']}, 'No defined vis parameters');
-// Results are rubbish
+// Results are rubbish</code><button class="btn" id="copy-button" data-clipboard-target="#target13">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
 
-// Add the S2 value range from 0 to 3000, and try again
+<p><img src="img/1_img16a.png" width="500" alt="" title=""/></p>
+
+<pre><p><code class="javascript" id="target14">// Add the S2 value range from 0 to 3000, and try again
 Map.addLayer(cop2Med, {bands:['B4','B3','B2'], min:0, max: 3000}, 'True-colour');
 // You can also change the order of bands e.g. B8,B4,B3 = false-colour composite etc
 Map.addLayer(cop2Med, {bands:['B8','B4','B3'], min:0, max: 3000}, 'False-colour');
 // Here using the NIR band, this false-colour shows photosynthetically 
-// active vegetation in bright red</code><button class="btn" id="copy-button" data-clipboard-target="#target13">Copy</button>
+// active vegetation in bright red</code><button class="btn" id="copy-button" data-clipboard-target="#target14">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
+<p><img src="img/1_img16b.png" width="500" alt="" title=""/></p>
 <hr>
 
 <p><strong>Sharing your code to complete the practical assignments</strong>
@@ -333,12 +337,12 @@ Map.addLayer(cop2Med, {bands:['B8','B4','B3'], min:0, max: 3000}, 'False-colour'
 Simply click on "Get Link" - the actual button NOT the dropdown arrow - Then click the "Click to copy link" button 
 and paste that in an email to us <a href="mailto:ots.online.education@gmail.com">ots.online.education@gmail.com</a>.
 !NB! Please remember to add the prac number in the header. 
-<p><img src="img/1_img16.png" width="450" alt="" title=""/></p>
+<p><img src="img/1_img17.png" width="450" alt="" title=""/></p>
 <hr>
 
 <p><strong>Practical Assignment #1</strong>
-<p><img src="img/1_img17.png" width="450" alt="" title=""/></p>
-<pre><p><code class="javascript" id="target14">// Import MOD13Q1.006 Terra Vegetation Indices 16-Day Global 250m
+<p><img src="img/1_img18.png" width="450" alt="" title=""/></p>
+<pre><p><code class="javascript" id="target15">// Import MOD13Q1.006 Terra Vegetation Indices 16-Day Global 250m
 // Select the EVI band for 2018
 // ..............................................
 // Calculate the mean EVI for 2018
@@ -348,10 +352,10 @@ and paste that in an email to us <a href="mailto:ots.online.education@gmail.com"
 // Zoom in to a center point on your map
 // ..............................................
 // Add you results layer to the map with your visualisation parameeters
-// Don't forget to give your new layer a name</code><button class="btn" id="copy-button" data-clipboard-target="#target14">Copy</button>
+// Don't forget to give your new layer a name</code><button class="btn" id="copy-button" data-clipboard-target="#target15">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
-
+<p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1Yq3Mu8Fo0EcY1xBRNWPn5hYzWFLiLWWlkIO_G4DRn_8/edit?ts=607e874c">quick (2 min) survey.</a> Thank you.</p>
 </div>
 
 <div id="sidebar">

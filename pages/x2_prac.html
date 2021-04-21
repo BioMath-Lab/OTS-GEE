@@ -22,6 +22,9 @@
 <br>
 Access the completed practical script <a href="https://code.earthengine.google.com/954e01cfe09cfe8a270181678d228200">here</a>.
 <br><br>
+<p><strong>The end product</strong></p>
+<p><img src="img/2_img1.png" alt=""></p>
+
 <strong>Learning Objectives</strong>
 <br><br>
 By the end of this practical you should be able to:
@@ -54,13 +57,13 @@ By the end of this practical you should be able to:
 .median();</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
   
-<p>Here we compute a median image as opposed to selecting the first image
-(in the first practical). A median image is a quick and easy way to find and select cloud-free pixels. The reason this works is because clouds have high reflectance values while shadows have low
+<p>Here we compute a median image as opposed to selecting the first image or computing the mean image
+  . A median image is a quick and easy way to find and select cloud-free pixels. The reason this works is because clouds have high reflectance values while shadows have low
 reflectance values. Therefore, by selecting a median image cloudy and shadow contaminated pixels are generally avoided. However, if you are working in areas that are frequently under cloud cover this may not suffice and you would need to use a 75th percentile image for example. Like other atmospheric interferences, clouds and
 their associated shadows are largely undesirable and should be removed
 prior to any analysis.</p>
 <p>At this point, you have reduced an image collection for the period between 01 May 2019 and 14 August 2019 to a single median image.</p>
-<p>Next, we will compute the NDVI and NDWI spectral indices. There are two ways  to achieve this in GEE:</p>
+<p>Next, we will compute the NDVI and NDWI spectral indices. There are two ways to achieve this in GEE:</p>
 <ol>
 <li>Using the expression function- very flexible</li>
 <li>Using the normalizedDifference function - less flexible but more specialised.</li>
@@ -77,7 +80,7 @@ var NDWI_1c = filtered.normalizedDifference(['B3','B8']);</code><button class="b
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
 <p><strong>Visualisation</strong></p>
-<p>We wll first visualise the RGB image (True-colour image). We centre the map on our point of interest and then add the image to the map for visualisation.</p>
+<p>We will first visualise the RGB image (True-colour image). We centre the map on our point of interest and then add the image to the map for visualisation.</p>
 <pre><p><code class="javascript" id="target5">Map.centerObject(Theewaterskloof,14);
 Map.addLayer(filtered,{bands:['B4','B3','B2'],min:0,max:3000},'RGB');</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
@@ -95,12 +98,12 @@ Map.addLayer(NDWI,{min: -1, max: 1, palette: vis},'NDWI');</code><button class="
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
 <p><strong>Interpreting spectral indices</strong></p>
-<p><img src="/images/prac2_f2.png" alt=""></p>
+<p><img src="img/2_img1.png" alt=""></p>
 <p><strong>Figure 2</strong></p>
 <p>Spectral indices take advantage of the spectral properties of land cover. For instance, as highlighted in the theory lecture, vegetation has a high reflectance in the Near-Infrared (NIR) region while having a low reflectance in the red portion of the electromagnetic (EM) spectrum. As a result of using these bands to compute the NDVI, the index corresponds to the greenness of vegetation and has been shown to be correlated to various vegetation parameters such as vegetation health, nutrient levels, and plant phenophase. Similarly, NDWI is mainly sensitive to water.</p>
 <hr>
 <p><strong>Detecting water</strong></p>
-<p>There are numerous methods available to detect surface water and this area of research is still active. In this course, you will be introduced to two of the approaches to detect Landcover classes of interest i.e. supervised classification and thresholding. For this practical, you will use a very simple thresholding-based approach that employs the computed NDVI and NDWI spectral indices.</p>
+<p>There are numerous methods available to detect surface water and this area of research is still active. In this course, you will be introduced to two of the approaches to detect landcover classes of interest i.e. supervised classification and thresholding. For this practical, you will use a very simple thresholding-based approach that employs the computed NDVI and NDWI spectral indices.</p>
 <pre><p><code class="javascript" id="target7">var water_1c = NDWI_1c.gt(NDVI_1c);
 Map.addLayer(water_1c,{},'water_1c');</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
@@ -124,7 +127,7 @@ Map.addLayer(NDWI_2a,{min: -1, max: 1, palette: vis},'NDWI');
 var water_2a = NDWI_2a.gt(NDVI_2a);
 Map.addLayer(water_2a,{},'water_2a');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
-<p><img src="/images/prac2_f3.png" alt=""></p>
+<p><img src="img/2_img2.png" alt=""></p>
 <p><strong>Figure 3:</strong> The influence of atmospheric interference on the detection
 of water. Water detected from atmospherically corrected Sentinel-2,
 level 2A (top), reference water detection based on the long-term surface
@@ -151,9 +154,9 @@ var area_2a = water_2a.selfMask().multiply(ee.Image.pixelArea()).reduceRegion({
 print('The area of water for BOA data (square metres):', ee.Number(area_2a).divide(1e6).round());</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <p><strong>Practical 2 Exercise</strong>
-Repeat the steps in this practical for the Landsat-8 image collection. Thereafter, compare the water detection results and patterns with the Sentinel-2 image results. Submit your final script.</p>
+Repeat the steps in this practical for the Landsat-8 TOA and surface reflectance (BOA) image collections. Thereafter, visually compare the water detection results and patterns with the Sentinel-2 image results. Submit your final script.</p>
 <p>To share your script, click on Get Link and then copy the script path. Send your completed script to <strong>email.</strong></p>
-<p><img src="/images/practical_1_script_path.png" alt=""></p>
+<p><img src="img/1_img17.png" width="450" alt="" title=""></p>
 <p>Do you have any feedback for this practical? Please complete this quick (2-5 min) survey <a href="https://forms.gle/UJCoLHCDzfcvpzkE8">here</a>.</p>  
 </div>
 

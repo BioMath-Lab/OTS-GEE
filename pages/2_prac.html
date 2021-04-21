@@ -52,11 +52,11 @@
     <li>Using the import button and then renaming the image collection. You can find the import button by searching for your image collection (in the search bar) and clicking on the imagecollection of interest. Thereafter, click on the 'Import' buttton in the bootom left.</li>
     </ol>
     <p>Using either approach, import the level 2A product and rename it s22a. Lastly, add a marker on the Theewaterskloof dam.</p>
+    <hr>
     <p><strong>Filtering data</strong></p>
     <p>Building from the previous practical where you imported and filtered Sentinel-2 data, we will repeat these steps.</p>
     <pre><p><code class="javascript" id="target2">var filtered = s21c.filterBounds(Theewaterskloof)
     .filterDate('2019-05-01','2019-08-14')
-<<<<<<< HEAD
     .median();</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
       
@@ -139,6 +139,8 @@
     water from Landsat-8 made available through the Global Surface Water
     product (centre), water detected from atmospherically uncorrected
     Sentinel-2, level 1C data (bottom).</p>
+    <hr>
+    <p><strong>Calculating water area</strong> </p>
     <p>For the last component of this practical, we will calculate the area of the detected water deived from both the Sentinel 1C and 2A data.</p>
     <p>To accomplish this, first add a bounding box around the Theewaterskloof dam by using the drawing tools. We will determine the area of water within this AOI. To achieve this we will first prepare the data by using the selfMask function to select all pixels with a value of 1 (water). Then multiply this by an image that contains the pixel area (100 aquared metres).</p>
     <p>Once we prepared the water image we will then sum up the pixel values within the specified AOI. This will represent the area of water in squared metres.</p>
@@ -158,7 +160,9 @@
     }).get('nd')
     print('The area of water for BOA data (square metres):', ee.Number(area_2a).divide(1e6).round());</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
-    <p><strong>Practical 2 Exercise</strong>
+    <hr>
+    <p><strong>Practical 2 Exercise:</strong>
+    </p>
     Repeat the steps in this practical for the Landsat-8 TOA and surface reflectance (BOA) image collections. Thereafter, visually compare the water detection results and patterns with the Sentinel-2 image results. Submit your final script.</p>
     <p>To share your script, click on Get Link and then copy the script path. Send your completed script to <strong>email.</strong></p>
     <p><img src="img/1_img17.png" width="450" alt="" title=""></p>
@@ -221,7 +225,6 @@
             console.log(e);
           });
     </script>
-=======
     .median();
 
 Map.centerObject(Theewaterskloof,14);
@@ -325,6 +328,5 @@ Repeat the steps in this practical for the Landsat-8 TOA and surface reflectance
         console.log(e);
       });
 </script>
->>>>>>> 13c64326c08d1832bea17651f6e43d0bae480aa2
 </body>
 </html>

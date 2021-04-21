@@ -58,6 +58,8 @@ var s2 = ee.ImageCollection('COPERNICUS/S2_SR')
 ;</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
+<img src="img/3_img2.png" width="650" alt="" title="" />
+
 <p>Find the Sentinel-2 surface reflectance dataset here: <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR#description" target="_blank">Sentinel-2 MSI: MultiSpectral Instrument Level-2A</a>
 
 <hr>
@@ -70,7 +72,9 @@ Make sure the new variable names within your function are consistent.
 <br>This is the default cloud masking process provided by GEE for Sentinel 2 images, though there is now an alternative, where you can use the Sentinel-2 cloud detector library (see here for more information: <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_CLOUD_PROBABILITY" target="_blank">Sentinel-2: Cloud Probability</a>.
 <br> 
 <br>We then use the map() function to apply a built-in algorithm or our own function over the Sentinel-2 collection.
-      
+ 
+<img src="img/3_img3.png" width="650" alt="" title="" />
+
 <pre><p><code class="javascript" id="target2">// Function to mask cloud from built-in quality band
 // information on cloud
 var maskS2clouds = function(image) {
@@ -113,6 +117,8 @@ Map.addLayer(s2_cloudmask.sort('CLOUDY_PIXEL_PERCENTAGE', false).first(),
               {min:0, max:3000, bands:['B4','B3','B2']}, 'Cloud masked image');</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
+<img src="img/3_img4.png" width="650" alt="" title="" />
+
 <hr>
 
 <p><strong>Processing</strong>
@@ -127,7 +133,7 @@ Map.addLayer(s2_cloudmask.sort('CLOUDY_PIXEL_PERCENTAGE', false).first(),
 print(s2_ndvi, 's2 with NDVI');</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<img src="img/3_img2.png" width="650" alt="" title="" />
+<img src="img/3_img5.png" width="650" alt="" title="" />
 
 <hr>
 
@@ -152,7 +158,9 @@ Lastly, we can specify details for the chart, including the type of chart and th
 // Display the chart
 print(plotNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
-      
+
+<img src="img/3_img6.png" width="650" alt="" title="" />
+
 <p> There are many other chart types available. To look at all of the available options see: <a href="https://developers.google.com/chart/interactive/docs" target="_blank">customisable charts</a>
 
 <p> Let's visualise the seasonal highs and lows of NDVI. To do this we will need to summarise the ImageCollection using a chosen summary statistic. In this case, we use median()
@@ -181,6 +189,8 @@ var ndvi_pal = palettes.colorbrewer.RdYlGn[9];</code><button class="btn" id="cop
 Map.addLayer(NDVI_jan, {min:0, max:1, palette: ndvi_pal}, 'NDVI Jan');
 Map.addLayer(NDVI_aug, {min:0, max:1, palette: ndvi_pal}, 'NDVI Aug');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/3_img7.png" width="650" alt="" title="" />
 
 <hr>
 
@@ -239,6 +249,8 @@ Export.table.toDrive({
 <script>new ClipboardJS('.btn');</script></pre>
 
 <p>Once you have run the Export functions, you will need to go to your task tab to execute the task.</p>
+
+<img src="img/3_img8.png" width="650" alt="" title="" />
 
 <hr>
 

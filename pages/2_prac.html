@@ -56,6 +56,7 @@
     <p>Building from the previous practical where you imported and filtered Sentinel-2 data, we will repeat these steps.</p>
     <pre><p><code class="javascript" id="target2">var filtered = s21c.filterBounds(Theewaterskloof)
     .filterDate('2019-05-01','2019-08-14')
+<<<<<<< HEAD
     .median();</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
       
@@ -220,5 +221,110 @@
             console.log(e);
           });
     </script>
+=======
+    .median();
+
+Map.centerObject(Theewaterskloof,14);
+Map.addLayer(filtered,{bands:['B4','B3','B2'],min:0,max:3000},'RGB');
+
+var NDVI_2a = filtered.normalizedDifference(['B8','B4']);
+var NDWI_2a = filtered.normalizedDifference(['B3','B8']);
+              
+Map.addLayer(NDVI_2a,{min: 0, max: 1, palette: vis},'NDVI');
+Map.addLayer(NDWI_2a,{min: -1, max: 1, palette: vis},'NDWI');
+
+var water_2a = NDWI_2a.gt(NDVI_2a);
+Map.addLayer(water_2a,{},'water_2a');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+<p><img src="img/2_img2.png" alt=""></p>
+<p><strong>Figure 3:</strong> The influence of atmospheric interference on the detection
+of water. Water detected from atmospherically corrected Sentinel-2,
+level 2A (top), reference water detection based on the long-term surface
+water from Landsat-8 made available through the Global Surface Water
+product (centre), water detected from atmospherically uncorrected
+Sentinel-2, level 1C data (bottom).</p>
+<p>For the last component of this practical, we will calculate the area of the detected water deived from both the Sentinel 1C and 2A data.</p>
+<p>To accomplish this, first add a bounding box around the Theewaterskloof dam by using the drawing tools. We will determine the area of water within this AOI. To achieve this we will first prepare the data by using the selfMask function to select all pixels with a value of 1 (water). Then multiply this by an image that contains the pixel area (100 aquared metres).</p>
+<p>Once we prepared the water image we will then sum up the pixel values within the specified AOI. This will represent the area of water in squared metres.</p>
+<p>Lastly, we print the area. You will see we</p>
+<ol>
+<li>Cast to number -since we want to perform a numerical operation</li>
+<li>Convert to squared metres (by divinding by 1e6 or 1 million)- This is easier to interpret</li>
+<li>Round of to the nearest integer using the round function- to drop the decimals</li>
+</ol>
+<pre><p><code class="javascript" id="target9">var area_1c = water_1c.selfMask().multiply(ee.Image.pixelArea()).reduceRegion({
+  reducer:ee.Reducer.sum(), geometry:AOI, scale:10
+}).get('nd')
+print('The area of water for TOA data (square metres):', ee.Number(area_1c).divide(1e6).round())
+
+var area_2a = water_2a.selfMask().multiply(ee.Image.pixelArea()).reduceRegion({
+  reducer:ee.Reducer.sum(), geometry:AOI, scale:10
+}).get('nd')
+print('The area of water for BOA data (square metres):', ee.Number(area_2a).divide(1e6).round());</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+<p><strong>Practical 2 Exercise</strong>
+Repeat the steps in this practical for the Landsat-8 TOA and surface reflectance (BOA) image collections. Thereafter, visually compare the water detection results and patterns with the Sentinel-2 image results. Submit your final script.</p>
+<p>To share your script, click on Get Link and then copy the script path. Send your completed script to <a href="mailto:ots.online.education@gmail.com"><strong>email.</strong></a></p>
+<p><img src="img/1_img17.png" width="450" alt="" title=""></p>
+<p>Do you have any feedback for this practical? Please complete this quick (2-5 min) survey <a href="https://forms.gle/UJCoLHCDzfcvpzkE8">here</a>.</p>  
+</div>
+
+<div id="sidebar">
+<h3>MENU</h3>
+<ul>
+<li><a href="../index.html">HOME</a></li>
+<nav class="drop-down-menu">
+<input type="checkbox" class="activate" id="accordion-1" name="accordion-1">
+<label for="accordion-1" class="menu-title">> COURSE 2020</label>
+<div class="drop-down">
+<li><a href="">Check again later</a></li>
+</div>
+</nav>
+<nav class="drop-down-menu">
+<input type="checkbox" class="activate" id="accordion-2" name="accordion-2">
+<label for="accordion-2" class="menu-title">> COURSE 2021</label>
+<div class="drop-down">
+<li><a href="1_prac.html">[Prac1] Getting started</a></li>
+<li class="selected"><a href="2_prac.html">[Prac2] Spectral indices</a></li>
+<li><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
+<li><a href="4_prac.html">[Prac4] Interactive App</a></li>
+<li><a href="5_prac.html">[Prac5] Time series-Fire</a></li>
+<li><a href="6_prac.html">[Prac6] Change analysis</a></li>
+<li><a href="7_prac.html">[Prac7] Landcover class</a></li>
+<li><a href="8_prac.html">[Prac8] Species patterns</a></li>
+<li><a href="9_prac.html">[Prac9] Your own data</a></li>
+</div>
+</nav>
+<li><a href="10_contact.html">CONTACT US</a></li>
+</nav>
+</ul>
+
+<h3></h3>
+</div>
+
+<div style="clear: both;"> </div>
+<ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>	
+
+<div id="footer">
+<p>&copy; Copyright 2021 BioGIS | Designed by <a href="http://www.biogis.co.za" target="_blank">BioGIS</a></p>
+</div>
+
+</div>
+<!-- 2. Include library -->
+<script src="../clipboard.min.js"></script>
+
+<!-- 3. Instantiate clipboard -->
+<script>
+      var clipboard = new ClipboardJS('.btn');
+
+      clipboard.on('success', function (e) {
+        console.log(e);
+      });
+
+      clipboard.on('error', function (e) {
+        console.log(e);
+      });
+</script>
+>>>>>>> 13c64326c08d1832bea17651f6e43d0bae480aa2
 </body>
 </html>

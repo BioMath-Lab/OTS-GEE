@@ -64,6 +64,7 @@
     reflectance values. Therefore, by selecting a median image cloudy and shadow contaminated pixels are generally avoided. However, if you are working in areas that are frequently under cloud cover this may not suffice and you would need to use a 75th percentile image for example. Like other atmospheric interferences, clouds and
     their associated shadows are largely undesirable and should be removed
     prior to any analysis.</p>
+    <hr>
     <p>At this point, you have reduced an image collection for the period between 01 May 2019 and 14 August 2019 to a single median image.</p>
     <p>Next, we will compute the NDVI and NDWI spectral indices. There are two ways to achieve this in GEE:</p>
     <ol>
@@ -104,12 +105,12 @@
     <p><strong>Figure 2</strong></p>
     <p>Spectral indices take advantage of the spectral properties of land cover. For instance, as highlighted in the theory lecture, vegetation has a high reflectance in the Near-Infrared (NIR) region while having a low reflectance in the red portion of the electromagnetic (EM) spectrum. As a result of using these bands to compute the NDVI, the index corresponds to the greenness of vegetation and has been shown to be correlated to various vegetation parameters such as vegetation health, nutrient levels, and plant phenophase. Similarly, NDWI is mainly sensitive to water.</p>
     <hr>
-    <p><strong>Detecting water</strong></p>
+    <strong>Detecting water</strong></p>
     <p>There are numerous methods available to detect surface water and this area of research is still active. In this course, you will be introduced to two of the approaches to detect landcover classes of interest i.e. supervised classification and thresholding. For this practical, you will use a very simple thresholding-based approach that employs the computed NDVI and NDWI spectral indices.</p>
     <pre><p><code class="javascript" id="target7">var water_1c = NDWI_1c.gt(NDVI_1c);
     Map.addLayer(water_1c,{},'water_1c');</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
-    <p>In the above code snippet, the function gt() returns a 1 if the first value (NDWI) is greater than the second value (NDVI), creating a binary raster i.e. a value of 1 is returned when NDWI values are greater than those of the corresponding NDVI pixel. This inequality can be useful to detect open surface water. However, upon inspection, you will come across inevitable omission and commission errors.</p>
+    In the above code snippet, the function gt() returns a 1 if the first value (NDWI) is greater than the second value (NDVI), creating a binary raster i.e. a value of 1 is returned when NDWI values are greater than those of the corresponding NDVI pixel. This inequality can be useful to detect open surface water. However, upon inspection, you will come across inevitable omission and commission errors.</p>
     <p><strong>The influence of atmospheric effects on water detection.</strong></p>
     <p>Recently, there has been a drive towards Analysis Ready Data (ARD). ARD  includes data that has already been corrected for atmospheric interferences. However, there is a considerable amount of uncertainty and variance associated with the results of different atmospheric correction algorithms. This, together with the fact that atmospherically corrected Sentinel-2 data is not readily available on GEE for areas outside of Europe from 2015 (the start of the archive) to 2018 i.e. level 1C (atmospherically uncorrected) data is only available. Therefore, if you may consider using level 1C data for your analysis, you need to understand the potential problems associated with atmospheric uncorrected data. We will consider these atmospheric effects on water detection.</p>
     <p>To visually explore the results of the atmospheric effects on water detection, we will repeat the code chunks above for the level-2A (atmospherically corrected) Sentinel-2 data.</p>
@@ -130,6 +131,7 @@
     Map.addLayer(water_2a,{},'water_2a');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
     <p><img src="img/2_img2.png" alt=""></p>
+    <hr>
     <p><strong>Figure 3:</strong> The influence of atmospheric interference on the detection
     of water. Water detected from atmospherically corrected Sentinel-2,
     level 2A (top), reference water detection based on the long-term surface

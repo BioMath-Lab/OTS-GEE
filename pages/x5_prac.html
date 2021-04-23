@@ -62,7 +62,7 @@ var FireCCI = ee.ImageCollection('ESA/CCI/FireCCI/5_1');</code><button class="bt
 <p><strong>Filtering data</strong>
 First define your variables for the temporal and spatial windows of interest. We will use these variables to filter our data before processing.</p>
 
-<pre><p><code class="javascript" id="target1">var startDate = ee.Date.fromYMD(2001,1,1);
+<pre><p><code class="javascript" id="target2">var startDate = ee.Date.fromYMD(2001,1,1);
 var endDate = ee.Date.fromYMD(2018,12,31);
 var years = ee.List(fire.aggregate_array('year')).distinct().sort();
 
@@ -74,21 +74,21 @@ var fire = FireCCI
     .filterDate(startDate, endDate)
     .map(function(img) { // This function adds year as property to each image
       return img.set('year', ee.Image(img).date().get('year'));
-  });</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+  });</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
 <p><strong>Processing</strong>
 Now build a function to remove all burn scars from the fire dataset that have a confidence interval of less than 50%.</p> 
  
-<pre><p><code class="javascript" id="target1">// Define a function to remove all fires <50% confidence interval
+<pre><p><code class="javascript" id="target3">// Define a function to remove all fires <50% confidence interval
 var confMask = function(img) {
   var conf = img.select('ConfidenceLevel');
   var level = conf.gt(50);
-  return img.updateMask(level).select('BurnDate'); //return only 'BurnDate' band};</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+  return img.updateMask(level).select('BurnDate'); //return only 'BurnDate' band};</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
   
 <p>Run the function and summarise the burn scars by the day-of-year (doy) most frequently burnt, followed by the the frequency areas are burnt in Kruger annually from 2001 until 2018.</p>
-<pre><p><code class="javascript" id="target1">// Most frequently burnt DOY
+<pre><p><code class="javascript" id="target4">// Most frequently burnt DOY
 var fireDOY_list = years.map(function(year) {
   return fire
     .filterMetadata('year', 'equals', year) // Filter image collection by year
@@ -112,8 +112,15 @@ var fireCnt_list = years.map(function(year) {
     .set('system:time_start', ee.Date.fromYMD(year, 1, 1
 });
 var cntFiresDOY = ee.ImageCollection.fromImages(fireCnt_list); 
-// Convert the image List back to an ImageCollection</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+// Convert the image List back to an ImageCollection</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
+
+<p>Summarise these results to represent the most frequently burnt day-of-year (doy) and the frequency areas have burnt in 
+Kruger over the last 18 years (2001-2018).
+
+
+
+
   
 </div>
 

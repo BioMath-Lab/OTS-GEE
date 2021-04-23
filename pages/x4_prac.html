@@ -20,9 +20,9 @@
 
 <div id="content">
 <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
-<p><strong>Practical 4: Long-term patterns of rainfall in and around Braulio Carrillo National Park in Costa Rica</strong>
-<br>
-Access the completed practical script <a href="https://code.earthengine.google.com/?scriptPath=users%2Fjdmwhite%2FOTS-GEE4EC%3APractical_1%2FExploring_images">here</a>.
+<p><strong>Practical 4: Long-term patterns of rainfall in and around Awast National Park in Ethiopia</strong>
+<br>by Sandra MacFadyen @ <a href="https://www0.sun.ac.za/biomath/">https://www0.sun.ac.za/biomath</a>
+<br>Access the completed practical script <a href="https://code.earthengine.google.com/?scriptPath=users%2Fjdmwhite%2FOTS-GEE4EC%3APractical_1%2FExploring_images">here</a>.
 <br><br>
 <strong>Learning Objectives</strong><br>
 By the end of this practical you should be able to:
@@ -32,7 +32,7 @@ By the end of this practical you should be able to:
 <li>Make an interactive map (GEE App)</li>
 <li>Compare rainfall and vegetation 'greenness" (i.e. rainfall as a driver of ecosystem processes like vegetation dynamics)</li>
 <li>Output data (csv, rasterStack) for analysis outside of GEE</li></ol>
-<img src="img/4_img1.png" width="650" alt="" title="" />
+<p><img src="img/4_img1.png" width="650" alt="" title="" />
 <hr>
 
 <p><strong>Introduction</strong>
@@ -114,16 +114,16 @@ return rain_year.set('year', ee.Date.fromYMD(y,1,1));
 
 <p>This produces a list of 20 images, which you'll need to convert back to an ImageCollection.
 Then calculate the long-term annual rainfall patterns for Costa Rica as follows:
-<pre><p><code class="javascript" id="target4">// Convert the image List to an ImageCollection.
+<pre><p><code class="javascript" id="target6">// Convert the image List to an ImageCollection.
 var rainYr = ee.ImageCollection.fromImages(rainYr_list);
 // Calculate long-term annual rainfall clipped to Costa Rica
-var rainAnnual = rainYr.mean().clip(costaRica);</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
+var rainAnnual = rainYr.mean().clip(costaRica);</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
 
 <p><strong>Visualisation</strong>
 <br>Now let's plot these results on a map. First define the various map elements i.e. the title and symbology for the legend as follows:
-<pre><p><code class="javascript" id="target6">var title = ui.Label('Costa Rica: Annual Rainfall 1981 to 2018', {
+<pre><p><code class="javascript" id="target7">var title = ui.Label('Costa Rica: Annual Rainfall 1981 to 2018', {
   stretch: 'horizontal',
   textAlign: 'center',
   fontWeight: 'bold',
@@ -131,16 +131,16 @@ var rainAnnual = rainYr.mean().clip(costaRica);</code><button class="btn" id="co
 
 var rainYvis = {
   min: 2100, max: 3800,
-  palette: 'ffffff, 67d9f1, 1036cb'};</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+  palette: 'ffffff, 67d9f1, 1036cb'};</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
 <p>Next, we centre the map to Costa Rica - In this way all other layers will align with this parent map.
 Now add the long-term mean annual rainfall for Costa Rica and the Braulio Carrillo boundary. Lastly add the defined title.
 
-<pre><p><code class="javascript" id="target7">Map.centerObject(costaRica, 8);
+<pre><p><code class="javascript" id="target8">Map.centerObject(costaRica, 8);
 Map.addLayer(rainAnnual, rainYvis, 'Long-term Annual Rainfall');
 Map.addLayer(braulio,{color: 'grey'}, 'Braulio Carrillo',true, 0.8);
-Map.add(title);</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+Map.add(title);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <img src="img/4_img2.png" width="650" alt="" title="" />
 
@@ -148,7 +148,7 @@ Map.add(title);</code><button class="btn" id="copy-button" data-clipboard-target
 <br>Now chart annual rainfall results but summarised for Braulio Carrillo National Park using a line chart.
 To do this, first define the chart parameters (e.g. title and axis labels) and then create the line chart.
 
-<pre><p><code class="javascript" id="target8">var opt_chart_annualPrecip = {
+<pre><p><code class="javascript" id="target9">var opt_chart_annualPrecip = {
   title: 'Annual Rainfall: Braulio Carrillo National Park',
   pointSize: 2,
   hAxis: {title: 'Year'},
@@ -162,13 +162,13 @@ var chart_annualPrecip = ui.Chart.image.series({
   scale: 5000,
   xProperty: 'year'
 }).setOptions(opt_chart_annualPrecip);
-// print(chart_annualPrecip);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+// print(chart_annualPrecip);</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
 <p>We could use <code>print()</code> to see the chart in the GEE console but for this practical we'll add the chart to our map layout instead.
 To do this, first make a panel to hold the chart in the map, then add the empty panel to the map and fill it with your chart:
 
-<pre><p><code class="javascript" id="target9">// Create a panel to hold the chart in the map
+<pre><p><code class="javascript" id="target10">// Create a panel to hold the chart in the map
 var panel = ui.Panel();
 panel.style().set({
   width: '350px',
@@ -177,7 +177,7 @@ panel.style().set({
 // Add empty panel to map
 Map.add(panel);
 // Add chart to panel
-panel.add(chart_annualPrecip);</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+panel.add(chart_annualPrecip);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <img src="img/4_img3.png" width="650" alt="" title="" />
 
@@ -214,25 +214,25 @@ To do so, follow these steps instead of the ones above.
 for the same period, 2000 to 2019, to see whether there's a relationship between the two.
 What do you think we'll see?
 
-<pre><p><code class="javascript" id="target10">// Calculate annual mean for every year for both Rainfall and EVI imageCollections
+<pre><p><code class="javascript" id="target11">// Calculate annual mean for every year for both Rainfall and EVI imageCollections
 var annualRainEVI_list =  years.map(function(y){
   var evi_year = eviAll.filter(ee.Filter.calendarRange(y, y, 'year'))
     .max().multiply(0.0001).rename('evi'); // Need to scale by constant
   var rain_year = rainAll.filter(ee.Filter.calendarRange(y, y, 'year'))
     .max().rename('rain');
   return rain_year.addBands(evi_year).set('year', ee.Date.fromYMD(y,1,1));
-});</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+});</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
 <p>Remember to convert the list that is returned, back to an ImageCollection, including a flatten() command as follows:
-<pre><p><code class="javascript" id="target11">// Convert the image List to an ImageCollection.
-var annualRainEVI = ee.ImageCollection.fromImages(annualRainEVI_list.flatten());</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+<pre><p><code class="javascript" id="target12">// Convert the image List to an ImageCollection.
+var annualRainEVI = ee.ImageCollection.fromImages(annualRainEVI_list.flatten());</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
 <p>Now plot both rainfall and EVI in a single chart. To create a comparative line chart of rainfall and EVI summaries for Braulio Carrillo,
 first define the chart parameters and then create the line chart with two y-axes as follows:
 
-<pre><p><code class="javascript" id="target12">// Display a comparative line chart of rainfall and EVI for Braulio Carrillo
+<pre><p><code class="javascript" id="target13">// Display a comparative line chart of rainfall and EVI for Braulio Carrillo
 // Set chart parameters e.g. title
 var opt_annualRainEVI = {title: "Annual Max Rainfall vs. 'Greenness (EVI) for Braulio Carrillo", pointSize: 2,
     legend: {maxLines: 5, position: 'top'},
@@ -250,12 +250,12 @@ var rain_ndvi_chart = ui.Chart.image.series({
   scale: 5000,
   xProperty: 'year'
 }).setOptions(opt_annualRainEVI);
-print(rain_ndvi_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
+print(rain_ndvi_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target13">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
 <img src="img/4_img7.png" width="500" alt="" title="" />
 <p>We could also directly check the correlation between the two variables as follows:
-<pre><p><code class="javascript" id="target13">// Compute a Pearson's product-moment correlation coefficient
+<pre><p><code class="javascript" id="target14">// Compute a Pearson's product-moment correlation coefficient
 // and the 2-sided p-value test for correlation = 0.
 var opt_correl = {
 	title: "Correlation between Rainfall and EVI for Braulio Carrillo", pointSize: 2,
@@ -273,7 +273,7 @@ var correl_chart = ui.Chart.image.series({
   scale: 5000,
   xProperty: 'year'
 }).setOptions(opt_correl);
-print(correl_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target13">Copy</button>
+print(correl_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target14">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <img src="img/4_img8.png" width="500" alt="" title="" />
 <p><strong>Data Export</strong>
@@ -287,7 +287,7 @@ For example, a formatted date field using a reducer to get the mean rainfall val
 The exported csv table will then contain a column for both date and mean annual rainfall. Once the task is completed,
 you will find this csv file in your google drive.
 
-<pre><p><code class="javascript" id="target14">var csv_annualPrecip = rainYr.map(function(image){
+<pre><p><code class="javascript" id="target15">var csv_annualPrecip = rainYr.map(function(image){
   var year = image.get('year');
   var mean = image.reduceRegion({
     reducer: ee.Reducer.mean(),
@@ -302,7 +302,7 @@ Export.table.toDrive({
   description: 'annualRain',
   folder: 'testOTS',
   fileFormat: 'CSV'
-});</code><button class="btn" id="copy-button" data-clipboard-target="#target14">Copy</button>
+});</code><button class="btn" id="copy-button" data-clipboard-target="#target15">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
 <p><strong>The last step, as always, is to save the script.</strong>

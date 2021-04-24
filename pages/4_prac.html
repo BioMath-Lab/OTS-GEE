@@ -505,8 +505,16 @@ and copy/paste the URL into an <a href="mailto:ots.online.education@gmail.com">e
 
 // Generate your own App using rainfall or any other climate variable*
 // to describe how values differ from one region to the next
-// * Don't forget CHIRPS is only available for the Southern Hemisphere
 // [HINT: Lines 213 to 288]
+// * Don't forget CHIRPS is only available for the Southern Hemisphere
+// Check the coverage of the dataset with
+var chirps = ee.ImageCollection("UCSB-CHG/CHIRPS/PENTAD")
+            .filter(ee.Filter.date('2020-01-01', '2021-02-01'))
+            .select('precipitation');
+var rainVis = {min: 0.0, max: 112.0,
+  palette: ['001137', '0aab1e', 'e7eb05', 'ff4a2d', 'e90000'],};
+Map.setCenter(24.24, -0.08, 2.5);
+Map.addLayer(chirps, rainVis,'Chirps Extent');
 
 // Go crazy! I cant wait to see what you come up with :)</code><button class="btn" id="copy-button" data-clipboard-target="#target17">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>

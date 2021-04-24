@@ -20,9 +20,9 @@
 
 <div id="content">
 <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
-<p><strong>Practical 4: Building your first App using long-term patterns of rainfall in and around Awash National Park in Ethiopia</strong>
+<p><strong>Practical 4: Building your first App using long-term patterns of rainfall in Ethiopia and Awash National Park</strong>
 <br>by Sandra MacFadyen @ <a href="https://www0.sun.ac.za/biomath/">https://www0.sun.ac.za/biomath</a>
-<br>Access the practical script <a href="https://code.earthengine.google.com/e4d482375bf66067ea74f0f3974b580f">here</a>.
+<br>Access the practical script <a href="https://code.earthengine.google.com/a320787ea8a9056e8b4fcba139e012b7">here</a>.
 <br><br>
 <strong>Learning Objectives</strong><br>
 By the end of this practical you should be able to:
@@ -40,16 +40,16 @@ By the end of this practical you should be able to:
 <br>Rainfall plays a central role in a myriad of natural processes, including river health, the transportation of nutrients, soil moisture, vegetation dynamics,
   fire regimes, animal movement and distribution patterns and landscape heterogeneity.
   Within protected areas these processes function together to safeguard ecosystem integrity. In the face of current climate change predictions,
-  the spatio-temporal patterns of rainfall is an increasingly important component to include in any ecological study (MacFadyen et al 2018).
+  the spatio-temporal patterns of rainfall is an increasingly important component to include in any ecological study (<a href="https://rmets.onlinelibrary.wiley.com/doi/abs/10.1002/joc.5394">MacFadyen et al 2018</a>).
   Here we explore patterns of monthly rainfall across Ethiopia and the Awash National Park from 1981 to 2019 (39 years).
-  We'll summarise monthly and annual rainfall patterns using line charts and examine the long-term spatial patterns of rainfall using an interactive map.
+  We'll summarise annual rainfall patterns over different regions using line charts and examine the long-term spatial patterns of rainfall using an interactive map.
   Lastly, we'll take a look at how the temporal patterns of annual rainfall compares to those of vegetation vigour or 'greenness',
   highlighting its importance as a bottom-up ecosystem driver.</p>
 <hr>
 
 <p><strong>Importing datasets</strong>
 <br>The datasets we will use for this practical are all available on Google Earth Engine and can be accessed as follows (You can convert these to an import record,
-using `convert` from the pop-up message):</p>
+using `convert` from the pop-up message):
 
 <pre><p><code class="javascript" id="target1">var Countries = ee.FeatureCollection('USDOS/LSIB/2017');
 var WDPA = ee.FeatureCollection('WCMC/WDPA/current/polygons');
@@ -63,28 +63,29 @@ The third, <a href="https://developers.google.com/earth-engine/datasets/catalog/
 <a href="https://developers.google.com/earth-engine/datasets/catalog/MODIS_006_MOD13Q1" target="_blank">MOD13Q1</a>, provides vegetation indexes (NDVI and NDVI) depicting vegetation 'greenness' per 250m pixel.
 
 <p><strong>Filtering data</strong>
-<br>First define variables for the temporal window of interest, including a start-date, end-date and the range of years and months.
-We will use these variables later to filter and summarise the long-term data.
+<br>First define variables for the temporal window of interest, including a start-date and end-date.
+We will use these variables later to filter and summarise these long-term data.
 
 <pre><p><code class="javascript" id="target2">// Setup date range
-var startDateX = ee.Date.fromYMD(2000,1,1);
 var startDate = ee.Date.fromYMD(1981,1,1);
-var endDate = ee.Date.fromYMD(2019,12,31);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+var endDate = ee.Date.fromYMD(2019,12,31);
+// This we'll use later when comparing rainfall and NDVI
+var startDateX = ee.Date.fromYMD(2000,1,1); </code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<p>Then filter our polygon features to our areas of interest (AOI), namely Ethiopia and Awash National Park
-At the same time, convert these two FeatureCollections to geometry objects as we'll need them later as function parameters for functions
-we'll build.
+<p>Then filter our polygon features to our areas of interest (AOI), namely Ethiopia and Awash National Park.
 
 <pre><p><code class="javascript" id="target3">var ethiopia = Countries.filter(ee.Filter.eq('COUNTRY_NA', 'Ethiopia'));
-print('Check Ethiopia Info',ethiopia); // Returns info about Ethiopia but can take memory
+// Returns info about Ethiopia but can take memory, so limit to first 10 records
+print('Check Ethiopia Info',ethiopia.limit(10)); 
 // Other usefull print function incl.
 print('Ethiopia data-type', ethiopia.name()); // Returns object type
 print('Ethiopia collection size', ethiopia.size()); // Returns collection size
-print('Ethiopia properties', ethiopia.propertyNames()); // Returns collection properties
+// Returns variable's properties
+print('Ethiopia properties', ethiopia.propertyNames()); 
 
-// // WDPA boundaries filtered to 'Awash' National Park in Ethiopia
-// Check out https://www.protectedplanet.net to get right name
+// WDPA boundaries filtered to 'Awash' National Park in Ethiopia
+// Visit https://www.protectedplanet.net to find the correct spelling for names
 var awash = WDPA.filter(ee.Filter.eq('ORIG_NAME', 'Awash'));
 print('Awash data-type',awash.name());
 Map.centerObject(ethiopia, 8);
@@ -92,13 +93,13 @@ Map.addLayer(ethiopia, {color: '006600', strokeWidth: 5}, 'Ethiopia', false);
 Map.addLayer(awash,{color: 'grey'}, 'Awash',true, 0.8);  // Add Awash boundary</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<p>Now filter the CHIRPS <code>ImageCollection</code> for rainfall (i.e. precipitation) and the MODIS MOD13Q1 product for the Normalized Difference Vegetation Index (NDVI) used in the previous practical.
-At the same time, filter by date range and our AOI to speed up all analyses that follow.
+<p>Now filter the CHIRPS ImageCollection for rainfall (i.e. precipitation) and the MODIS MOD13Q1 product for the Normalized Difference Vegetation Index (NDVI) used in the previous practical.
+At the same time, filter by date range and clip the collection to your AOI to speed up all analyses that will follow. .
 
 <pre><p><code class="javascript" id="target4">// Lomg-term rainfall from CHIRPS
 var rainAll = CHIRPS.select('precipitation')
     .filterDate(startDate, endDate);
-print('rainAll Info', rainAll);
+print('rainAll Info', rainAll.limit(10));
 print('rainAll data-type', rainAll.name());
 // Check how many images are in the full imageCollection
 print('rainAll collection size ', rainAll.size());
@@ -106,7 +107,8 @@ print('rainAll collection size ', rainAll.size());
 // First create a clip function and iterate over each image in the image collection
 // ** From BONUS section, Prac #1
 var clipF = function(image){
-  return image.clip(ethiopia).rename('rain'); // .rename because 'precipitation' is too long for me :)
+  return image.clip(ethiopia).rename('rain'); 
+// We use .rename here just because 'precipitation' is too long :)
 };
 
 // Now run it over the CHIRPS images in the collection
@@ -118,14 +120,16 @@ var ndviAll = MOD13Q1.select('NDVI')
 <script>new ClipboardJS('.btn');</script></pre>
 
 <p><strong>Processing</strong>
-<br>To plot the long-term patterns of rainfall across Awash National Park from 1981 to 2019,
+<br>To plot the long-term patterns of accumulated monthly rainfall across Awash National Park from 1981 to 2019,
 reduce the monthly rainfall records by Awash region as follows:
-<pre><p><code class="javascript" id="target5">var opt_chart_mnthRain = {
+<pre><p><code class="javascript" id="target5">// Set your chart option parameters 
+var opt_chart_mnthRain = {
   title: 'Mean Monthly Rainfall: Awash National Park 1981-2019',
   hAxis: {title: 'Month'},
   vAxis: {title: 'Rainfall (mm)'},
 };
 
+// Create your barchart/histogram
 var chart_mnthRain = ui.Chart.image.series({
   imageCollection: rainClip,
   region: awash,
@@ -134,11 +138,21 @@ var chart_mnthRain = ui.Chart.image.series({
   xProperty: 'month' 
 }).setChartType('ColumnChart')
 .setOptions(opt_chart_mnthRain);
-// print(chart_mnthRain);
+// Use the print() command to display your chart in the code editor console
+print(chart_mnthRain);</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre> 
 
-// To summarise by year, you first need to define a list of unique observation years from the image collection.
-// Or you could create a series (see lines 29-32)
+<img src="img/4_img3a.png" width="550" alt="" title="" />
+
+<p>To generate a line chart of annual rainfall though, we first need to summarise our dataset before trying to plot it. 
+This will help us avoid a "memory capacity exceeded" error.
+
+<pre><p><code class="javascript" id="target5b">// To summarise by year, define a list of years 
+// to summarise over.
+// Get this directly from the ImageCollection itself
 var years = ee.List(rainClip.aggregate_array('year')).distinct().sort();
+// Or just create a sequence list
+// var years = ee.List.sequence(1981, 2019);
 print(years);
 
 // Map over the list of years to build a list of annual image composites.
@@ -150,15 +164,27 @@ var yearList = years.map(function(year) {
     .reduce(ee.Reducer.mean())
     // Set composite year as an image property.
     .set('year', year);
+	.set('yrString',ee.String(year).slice(0,4)); 
+	// This is added to help rename bands later
 });
-print('Check yearList', yearList);
+print('Check yearList', yearList.limit(10));
 print('yearList size', yearList.size());
 
 // Convert the image List to an ImageCollection.
-var rainYears = ee.ImageCollection.fromImages(yearList);
-// print('Check rainYears', rainYears);
+var rainYears = ee.ImageCollection.fromImages(yearList.flatten());
+// print('Check rainYears', rainYears.limit(10));
 print('Check rainYears', rainYears.name());
 
+// Now chart your results
+// First define the chart options
+var opt_chart_annualRain = {
+  title: 'Annual Rainfall in Ethiopia from 1981-2019',
+  // pointSize: 2, lineWidth: 1,
+  hAxis: {title: 'Year'},
+  vAxis: {title: 'Rainfall (mm)'},
+};
+
+// Then create your line chart
 var chart_annualRain = ui.Chart.image.series({
   imageCollection: rainYears,
   region: ethiopia,
@@ -166,8 +192,10 @@ var chart_annualRain = ui.Chart.image.series({
   scale: 5000,
   xProperty: 'year'
 }).setOptions(opt_chart_annualRain);
-// print(chart_annualRain);</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+// print(chart_annualRain);</code><button class="btn" id="copy-button" data-clipboard-target="#target5b">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/4_img3b.png" width="550" alt="" title="" />
 
 <p>You can also calculate the long-term mean rainfall for the whole of Ethiopia as follows:
 <pre><p><code class="javascript" id="target6">// Long-term mean rainfall of Ethiopia
@@ -176,62 +204,63 @@ var rainAnnual = rainClip.mean();
 // print('Check Long-term mean', rainAnnual); // Use print() to check your results</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-
 <p><strong>Visualisation</strong>
-<br>Now let's plot these results on a map. First define the various map elements i.e. the title and symbology for the legend as follows:
-<pre><p><code class="javascript" id="target7">// Now add to the map
+<br>Now let's plot these results on a map. First define centre the map to Ethiopia.
+Then add Ehtiopia's boundary, the long-term mean annual rainfall for Ethiopia and finally the boundary for Awash National Park.
+<pre><p><code class="javascript" id="target7">// Centre your map
 Map.centerObject(ethiopia, 4.5);
-Map.addLayer(ethiopia, {color: '006600', strokeWidth: 5}, 'Ethiopian Boundary'); // Trick to get outline only
+// Add Ethiopia but make the border quite thick so it looks like only an outline
+Map.addLayer(ethiopia, {color: '006600', strokeWidth: 5}, 'Ethiopian Boundary'); 
+// Add the mean rainfall and use the legend parameters 
+// stored as the import entry, "ltVis" 
 Map.addLayer(rainAnnual, ltVis, 'Long-term Annual Rainfall');
-Map.addLayer(awash,{color: 'black'}, 'Awash National Park',true, 1);  // Add Awash boundary</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+// Lastly, add Awash's boundary
+Map.addLayer(awash,{color: 'black'}, 'Awash National Park',true, 1);</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<p>Next, we centre the map to Ethiopia - In this way all other layers will align with this parent map.
-Now add the long-term mean annual rainfall for Ethiopia and the Awash boundary. Lastly add the defined title.
-
-<pre><p><code class="javascript" id="target8">Map.centerObject(costaRica, 8);
-Map.addLayer(rainAnnual, rainYvis, 'Long-term Annual Rainfall');
-Map.addLayer(braulio,{color: 'grey'}, 'Awash',true, 0.8);
-Map.add(title);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
 <img src="img/4_img2.png" width="650" alt="" title="" />
 
-<p><strong>More Charting</strong>
-<br>We can summarise the annual rainfall results by different regions i.e. Awash National Park and Ethiopia
-To do this, first need to create a new featureCollection and then define the chart parameters (e.g. title and axis labels) to plot a dual axis line chart.
+<p><strong>More Charting Options</strong>
+<br>We can also summarise these annual rainfall results by different regions i.e. Awash National Park and Ethiopia.
+To do this, first create a new featureCollection and then define the chart parameters (e.g. title and axis labels) and plot a line chart
+using a secondary y-axis.
 
 <pre><p><code class="javascript" id="target9">// Create a new feature collection with both Ethiopia and Awash boundaries
 var myRegions = ee.FeatureCollection([
-  ee.Feature(ethiopia.geometry(), {'place': 'Ethiopia'}), //NB! features must be geometries
+  //NB! the .geometry() function convert ours features to geometry variables
+  ee.Feature(ethiopia.geometry(), {'place': 'Ethiopia'}), 
   ee.Feature(awash.geometry(), {'place': 'Awash'})
 ]);
 print('Check myRegions', myRegions);
 
-// Set chart parameters
+// Set your chart options
 var opt_chart_regions = {
   title: 'Annual Average Rainfall 1981-2019',
           hAxis: {title: 'Year', format: '####'},
           vAxis: {title: 'Rainfall (mm)'},
           lineWidth: 2,
-          colors: ['31159a', '4ecbd4'],
+          colors: ['31159a', '4ecbd4'], // Include 2 colours, 1 for each line
 };
 
-// Define the chart and print it to the console.
+// Now define the chart and print it to the console.
 var chart_regions =
     ui.Chart.image.seriesByRegion({
           imageCollection: rainYears,
           // band: 'rain_mean',
-          regions: myRegions,
+          regions: myRegions, // This is your new FeatureCollection
           reducer: ee.Reducer.mean(),
           scale: 5000,
-          seriesProperty: 'place',
-          xProperty: 'year'
+          seriesProperty: 'place', // This is your grouping field
+          xProperty: 'year' // And the x-axis is your year property
         }).setOptions(opt_chart_regions);
 // print(chart_regions);</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<p>We could use print() to see the chart in the GEE console but for this practical we'll add the chart to our map layout instead.
-To do this, first make a panel to hold the chart in the map, then add the empty panel to the map and fill it with your chart:
+<img src="img/4_img4.png" width="550" alt="" title="" />
+
+<p>Now instead of using print() to see this chart in the GEE console, we'll instead add it to the map layout.
+To do this, first make sure the print() function above is commented out. Then we will start adding the different elements
+to our map:
 
 <p><strong>Adding additional elements to your map</strong>
 <br>Before making our App we need to add more information to our map, like a title or summary chart.
@@ -243,32 +272,33 @@ var title = ui.Label('Annual Rainfall in Ethiopia from 1981 to 2018', {
   fontSize: '20px'
 });
 
-// Add title to the map
-// Map.add(title);
+// Add this title to the map
+Map.add(title);
 
-// Create a panel to hold the chart in the map instead of "Console" *must turn off print(chart);
+// Create a panel to hold the chart in the map instead of "Console" 
+// NB! You must turn off print(chart); above for this to work
 var panel = ui.Panel();
 panel.style().set({
   width: '350px',
   position: 'bottom-left'
 });
 
-// Add empty chart panel to map
+// Add this empty chart panel to the map
 Map.add(panel);
-// Add chart to panel
-panel.add(chart_regions); // or panel.add(chart_annualRain);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+// Fill the panel with the chart
+panel.add(chart_regions);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
-<img src="img/4_img3.png" width="650" alt="" title="" />
+<img src="img/4_img1.png" width="650" alt="" title="" />
 
 <p><strong>Save your map online</strong>
 <br>Now for the fun part! We can share this map with the world by creating a GEE Application (App).
-To save your map online as your first GEE App, follow the steps below:
+<br>To do this, follow the steps below:
 <ol><li>Click the <code>Apps</code> button above
 <li>Select <code>NEW APP</code>
 <li>Give the App a Name and click <code>PUBLISH</code>. Leave everything else default
 <li>Your new URL will appear - Click this to see your first online interactive map (if you get an error message, follow the steps below instead).
 <li>If you see a <code>Not ready</code> page, give it a few minutes and try again</li></ol>
-<img src="img/4_img4.png" width="650" alt="" title="" />
+<p><img src="img/4_img5a.png" width="650" alt="" title="" /></p>
 
 <p>If you get an error message, chances are you haven't accepted the terms and conditions of using GEE Apps in your Google Cloud Platform.
 To do so, follow these steps instead of the ones above.
@@ -276,7 +306,7 @@ To do so, follow these steps instead of the ones above.
 <li>Select NEW APP
 <li>Give the App a Name and click PUBLISH
 <li>When the error appears, click the Cloud Terms of Service link
-<li>This will open the Cloud Platform Console
+<li>This will open the Cloud Platform Console (if not open it <a href="https://console.cloud.google.com/home/dashboard">here</a>)
 <li>Go down to App Engine and select Dashboard
 <li>You'll be asked to agree to the Terms of Service, AGREE AND CONTINUE
 <li>Close your Cloud Platform Console and go back to GEE and click NEW APP again
@@ -284,12 +314,13 @@ To do so, follow these steps instead of the ones above.
 <li>Your new URL will appear - Click this to see your first online interactive map
 <li>If you see a Not ready page, give it a few minutes or refresh the page and try again</li></ol>
 
-<img src="img/4_img5.png" width="650" alt="" title="" />
-<p><strong>And voilà! Your first GEE App!</strong></p>
+<p><img src="img/4_img5b.png" width="650" alt="" title=""/></p>
+
+<p><strong><a href="https://biogis.users.earthengine.app/view/rainprac4">And voilà! Your first GEE App!</a></strong></p>
 <img src="img/4_img6.png" width="650" alt="" title="" />
 
 <p><strong>Relationship between annual rainfall and vegetation 'greenness'</strong>
-<br>Taking things even further, we could also combine the calculation of annual max rainfall with annual maximum NDVI for Ethiopia
+<br>Taking things even further, we could also combine the calculation of annual mean rainfall with annual mean NDVI for Ethiopia
 for the same period, 2000 to 2019, to see whether there's a relationship between the two.
 What do you think we'll see?
 
@@ -306,13 +337,15 @@ var yearsX = ee.List(ndviClip.aggregate_array('year')).distinct().sort();
 print('Check yearsX',yearsX);</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<p>Now calculate the annual mean for each year for both Rainfall and NDVI imageCollections. Then create a comparative line chart of both summaries. Remember to
-first define the chart parameters and then create the line chart with two y-axes as follows:
+<p>Now calculate the annual mean for each year for both Rainfall and NDVI imageCollections.
 
-<pre><p><code class="javascript" id="target13">// Calculate annual mean for every year for both Rainfall and NDVI imageCollections
+<pre><p><code class="javascript" id="target13a">// Calculate annual mean for every year for both Rainfall and NDVI imageCollections
 var annualRainNDVI_list =  yearsX.map(function(y){
-  var rainYear = rainClip.filter(ee.Filter.calendarRange(y, y, 'year')).mean().rename('rain');
-  var ndviYear = ndviClip.filter(ee.Filter.calendarRange(y, y, 'year')).mean().multiply(0.0001).rename('ndvi'); // Need to scale by constant
+  var rainYear = rainClip.filter(ee.Filter.calendarRange(y,y,'year'))
+  	  		   	.mean().rename('rain');
+  var ndviYear = ndviClip.filter(ee.Filter.calendarRange(y,y,'year'))
+  	  		   	.mean().multiply(0.0001).rename('ndvi'); 
+// .multiply(0.0001) scale by constant the constant refered to in the metadata
   return ndviYear.addBands(rainYear).set('year', y);
 });
 // print('Check annualRainNDVI_list', annualRainNDVI_list);
@@ -320,11 +353,36 @@ print('Check annualRainNDVI_list', annualRainNDVI_list.name());
 
 // Convert the image List to an ImageCollection.
 var annualRainNDVI = ee.ImageCollection.fromImages(annualRainNDVI_list.flatten());
-// print('Check annualRainNDVI', annualRainNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target13">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
+// print('Check annualRainNDVI', annualRainNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target13a">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
 
-<img src="img/4_img7.png" width="500" alt="" title="" />
-<p>We could also directly check the correlation between the two variables as follows:
+<p>Then create a comparative line chart of both summaries. Remember to first define the chart parameters and then 
+create the line chart with two y-axes as follows:
+<pre><p><code class="javascript" id="target13b">// Display a comparative line chart of rainfall and NDVI for Ethiopia 
+// Set chart parameters e.g. title
+var opt_chart_RainNDVI = {
+    title: "Annual Max Rainfall vs. 'Greenness (NDVI) for Ethiopia", 
+    pointSize: 3,
+    legend: {maxLines: 5, position: 'top'},
+    series: { 0: {targetAxisIndex: 0, color: 'green', lineWidth: 1, pointSize: 2},
+              1: {targetAxisIndex: 1, color: 'blue', lineWidth: 1, pointSize: 2}},
+        vAxes: {// Adds titles to each axis.
+          0: {title: 'Mean NDVI (*0.0001)'},
+          1: {title: 'Mean Rainfall (mm)'}},};
+          
+// Build the chart and plot it          
+var chart_RainNDVI = ui.Chart.image.series({
+  imageCollection: annualRainNDVI.select(['ndvi','rain']),
+  region: ethiopia,
+  reducer: ee.Reducer.mean(),
+  scale: 5000,
+  xProperty: 'year'
+}).setOptions(opt_chart_RainNDVI);
+// print(chart_RainNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target13b">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+
+<p><strong>Correlation between annual rainfall and vegetation 'greenness'</strong>
+<br>We could also directly check the correlation between the two variables as follows:
 <pre><p><code class="javascript" id="target14">// Compute a Pearson's product-moment correlation coefficient
 // and the 2-sided p-value test for correlation = 0.
 var opt_correl = {
@@ -366,8 +424,8 @@ var chart_RainNDVI = ui.Chart.image.series({
   xProperty: 'year'
 }).setOptions(opt_chart_RainNDVI);
 // print(chart_RainNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target14">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
-<img src="img/4_img8.png" width="500" alt="" title="" />
+<script>new ClipboardJS('.btn');</script></p></pre>
+<img src="img/4_img8.png" width="500" alt="" title=""/>
 
 <p><strong>Data Export</strong>
 <br>To export the data shown in the created charts, you can simply maximise the chart and then click Download to
@@ -402,13 +460,13 @@ Export.table.toDrive({
 
 <p>Or you can create a rasterStack and export that to your GDrive as follows:
 
-<pre><p><code class="javascript" id="target16">// Use the .flatten() command to flatten the collection of collection
-var rainYears = ee.ImageCollection.fromImages(yearList.flatten());
-
-// // Apply the function toBands() on the image collection to stack all bands into one image
-var rainYearsStack = rainYears.toBands().rename(['1981','1982','1983','1984','1985','1986','1987','1988','1989','1990','1991','1992','1993','1994','1995','1996','1997','1998','1999','2000','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019']);
-print('Check rainYearsStack', rainYearsStack);
-// -------------------------------------------------------------------------
+<pre><p><code class="javascript" id="target16">// Get the band names from the ImageCollection images
+var bandNames = ee.List(rainYears.aggregate_array('yrString'));
+print('Check bandNames',bandNames);
+// Apply the function toBands() on the image collection 
+// to stack all bands into one image
+// And .rename() to rename the new "rasterStack" layers
+var rainYearsStack = rainYears.toBands().rename(bandNames);
 
 // Export aa cloud-optimized GeoTIFF.
 // i.e. rasterStack with 39 layers, representing annual rainfall from 1981 to 2019
@@ -425,15 +483,22 @@ Export.image.toDrive({
 });</code><button class="btn" id="copy-button" data-clipboard-target="#target16">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<p><strong>The last step, as always, is to save the script.</strong>
+<p><strong>Sharing your code to complete the practical assignments</strong>
+<br>In the previous practical assignments, you shared your scripts with us using the "Get Link" button below to copy/paste 
+your script link into an email to us at <a href="mailto:ots.online.education@gmail.com">ots.online.education@gmail.com</a>.
+your scripts.
+<p><img src="img/1_img17.png" width="450" alt="" title=""/></p>
+
+<p>In this assignment you will also need to share the URL of your new App with us. Get the URL link by clicking on Apps and then under the
+ID (click to update app) get the link directly from the App details page, or just open the App under App Name (click to launch)
+and copy/paste the URL into an <a href="mailto:ots.online.education@gmail.com">email</a> to us. 
+<p><img src="img/4_img11a.png" width="450" alt="" title=""/></p>
+<p><img src="img/4_img11b.png" width="450" alt="" title=""/></p>
 <hr>
 
 <p><strong>Practical Assignment #4</strong>
-<pre><p><code class="javascript" id="target17">// To complete the practical exercise below you need to know how to share
-// your scripts with us
-// Simply click on "Get Link" - the actual button NOT the dropdown arrow
-// Then click the "Click to copy link" button and paste that in an email to us
-// ots.online.education@gmail.com
+<pre><p><code class="javascript" id="target17">// To complete the practical exercise below share
+// your scripts and App URL with us, as described above
 // !NB! Remember to add the prac number in the header
 // Also see https://biomath-lab.github.io/OTS-GEE/pages/4_prac.html for more help
 // -----------------------------------------------------------
@@ -443,12 +508,7 @@ Export.image.toDrive({
 // * Don't forget CHIRPS is only available for the Southern Hemisphere
 // [HINT: Lines 213 to 288]
 
-// This time, you'll send me the URL for your App and the shared script. 
-// You know how to copy/paste your script but remember to fetch the URL for your APP
-// under >> Apps >> App Name (click to launch), click on your App and send me the URL that opens
-// Or just tick "Repository script path" under "Source Code" when publishing your App 
-// If you didn't do this when you first published, you can change it later under ID (click to update app).
-// Then just send the URL i.e. you don't need to share your script separately.</code><button class="btn" id="copy-button" data-clipboard-target="#target17">Copy</button>
+// Go crazy! I cant wait to see what you come up with :)</code><button class="btn" id="copy-button" data-clipboard-target="#target17">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
 <p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1CXibMNcoUTrz2HY2NG2KRefOUphv4DF3f3EiTCbCDL4/">quick (2 min) survey.</a> Thank you.</p>

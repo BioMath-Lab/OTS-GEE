@@ -148,18 +148,18 @@
     <p>Lastly, we print the area. You will see we</p>
     <ol>
     <li>Cast to number -since we want to perform a numerical operation</li>
-    <li>Convert to squared metres (by divinding by 1e6 or 1 million)- This is easier to interpret</li>
+    <li>Convert to squared kilometres (by divinding by 1e6 or 1 million)- This is easier to interpret</li>
     <li>Round of to the nearest integer using the round function- to drop the decimals</li>
     </ol>
     <pre><p><code class="javascript" id="target9">var area_1c = water_1c.selfMask().multiply(ee.Image.pixelArea()).reduceRegion({
       reducer:ee.Reducer.sum(), geometry:AOI, scale:10
     }).get('nd')
-    print('The area of water for TOA data (square metres):', ee.Number(area_1c).divide(1e6).round())
+    print('The area of water for TOA data (square kilometres):', ee.Number(area_1c).divide(1e6).round())
     
     var area_2a = water_2a.selfMask().multiply(ee.Image.pixelArea()).reduceRegion({
       reducer:ee.Reducer.sum(), geometry:AOI, scale:10
     }).get('nd')
-    print('The area of water for BOA data (square metres):', ee.Number(area_2a).divide(1e6).round());</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+    print('The area of water for BOA data (square kilometres):', ee.Number(area_2a).divide(1e6).round());</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
 
     <hr>

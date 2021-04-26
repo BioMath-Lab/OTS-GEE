@@ -12,76 +12,326 @@
 
 <body>
 
-<div id="wrap">
-<div id="header">
-<h1>GOOGLE EARTH ENGINE APPLICATIONS</h1>
-<h1>IN ECOLOGY AND CONSERVATION</h1>
-</div>
-
-<div id="content">
-<h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
-<p><strong>Practical 3: NDVI time-series over a single region</strong>
-<br>
-Please check back later.
-<br><br>
-<p><img src="img/wait.png" alt="" title="" />
-</div>
-
-<div id="sidebar">
-<h3>MENU</h3>
-<ul>
-<li><a href="../index.html">HOME</a></li>
-<nav class="drop-down-menu">
-<input type="checkbox" class="activate" id="accordion-1" name="accordion-1">
-<label for="accordion-1" class="menu-title">> COURSE 2020</label>
-<div class="drop-down">
-<li><a href="">Check again later</a></li>
-</div>
-</nav>
-<nav class="drop-down-menu">
-<input type="checkbox" class="activate" id="accordion-2" name="accordion-2">
-<label for="accordion-2" class="menu-title">> COURSE 2021</label>
-<div class="drop-down">
-<li><a href="1_prac.html">[Prac1] Getting started</a></li>
-<li><a href="2_prac.html">[Prac2] Spectral indices</a></li>
-<li class="selected"><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
-<li><a href="4_prac.html">[Prac4] Interactive App</a></li>
-<li><a href="5_prac.html">[Prac5] Time series-Fire</a></li>
-<li><a href="6_prac.html">[Prac6] Change analysis</a></li>
-<li><a href="7_prac.html">[Prac7] Landcover class</a></li>
-<li><a href="8_prac.html">[Prac8] Species patterns</a></li>
-<li><a href="9_prac.html">[Prac9] Your own data</a></li>
-</div>
-</nav>
-<li><a href="10_contact.html">CONTACT US</a></li>
-</nav>
-</ul>
-
-<h3></h3>
-</div>
-
-<div style="clear: both;"> </div>
-<ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>
-
-<div id="footer">
-<p>&copy; Copyright 2021 BioGIS | Designed by <a href="http://www.biogis.co.za" target="_blank">BioGIS</a></p>
-</div>
-
-</div>
-<!-- 2. Include library -->
-<script src="../clipboard.min.js"></script>
-
-<!-- 3. Instantiate clipboard -->
-<script>
-      var clipboard = new ClipboardJS('.btn');
-
-      clipboard.on('success', function (e) {
-        console.log(e);
-      });
-
-      clipboard.on('error', function (e) {
-        console.log(e);
-      });
-</script>
-</body>
-</html>
+  <div id="wrap">
+  <div id="header">
+  <h1>GOOGLE EARTH ENGINE APPLICATIONS</h1>
+  <h1>IN ECOLOGY AND CONSERVATION</h1>
+  </div>
+  
+  <div id="content">
+  <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
+  <p><strong>Practical 3: NDVI time-series over a single region</strong>
+  <br>
+  by Joseph White
+  <br><br>
+  <strong>Learning Objectives</strong>
+  By the end of this practical you should be able to:
+  <br>
+  <ol>
+  <li>Mask clouds from an image collection</li>
+  <li>Write a custom function</li>
+  <li>Map it over a collection</li>
+  <li>Plot a time-series</li>
+  <li>Export data as a csv or image</li>
+  </ol>
+  <p>Access the completed practical script <a href="https://code.earthengine.google.com/2c3c4e340b694493a8892bb0465aeb20">here</a>.
+  <hr>
+  
+  <p><img src="img/3_img1.png" width="650" alt="" title=""/></p>
+  
+  <p><strong>Introduction</strong>
+  <br>
+  Vegetation indices, such as NDVI and EVI are foundational for understanding phenological patterns through remote sensing. NDVI can help us differentiate vegetation from other land use classes, as well as assess patterns in the vegetations' state. It is broadly used across ecological and agricultural studies that can help to simplify the complexities of multi-spectral remote-sensed imagery. In this practical, we will explore NDVI using the Sentinel-2 surface reflectance imagery. We will learn how to build our own functions, mask clouds over your image collection, calculate NDVI for your image collection, and lastly export your images and results in a csv format. 
+  </p>
+  <hr>
+  
+  <p><strong>Importing & Pre-processing</strong>
+  <br>We start by creating a polygon. This can be done by using the polygon tool in the GEE code editor. We then filter the ImageCollection by time and space. Lastly, we filter it by the amount of cloud cover to remove excessively cloudy scenes. This is done using the image property called 'CLOUD_COVERAGE_PERCENTAGE'.</p>
+  
+  <pre><p><code class="javascript" id="target1">// Create image collection of S-2 imagery for the full year of 2019
+  var s2 = ee.ImageCollection('COPERNICUS/S2_SR')
+  //filter start and end date
+  .filterDate('2019-01-01', '2019-12-31')
+  //filter according to drawn boundary
+  .filterBounds(geometry)
+  // pre-filter to get less cloudy images (only keeps images with less than 20% cloudy pixels)
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',20))
+  ;</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <img src="img/3_img2.png" width="650" alt="" title="" />
+  
+  <p>Find the Sentinel-2 surface reflectance dataset here: <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR#description" target="_blank">Sentinel-2 MSI: MultiSpectral Instrument Level-2A</a>
+  
+  <hr>
+  
+  <p><strong>Pre-processing</strong>
+  <br>We will now use our first function. This function creates a cloud mask based on the metadata within each image of the collection. Look up the band information in the Sentinel-2 metadata. We create a variable name for the overall function called maskS2clouds. We then create a set of internal functions to apply to each image in the ImageCollection. We extract information on both dense and cirrus 
+  clouds from the Sentinel-2 metadata. Each cloud type is stored in Bit format (bit 10 & 11, respectively) and we use the bitwiseAnd() function to extract this. Once the two cloud types are added together, we then mask the original image where cloud has been detected.
+  Make sure the new variable names within your function are consistent.
+  <br>
+  <br>This is the default cloud masking process provided by GEE for Sentinel 2 images, though there is now an alternative, where you can use the Sentinel-2 cloud detector library (see here for more information: <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_CLOUD_PROBABILITY" target="_blank">Sentinel-2: Cloud Probability</a>.
+  <br> 
+  <br>We then use the map() function to apply a built-in algorithm or our own function over the Sentinel-2 collection.
+   
+  <img src="img/3_img3.png" width="650" alt="" title="" />
+  
+  <pre><p><code class="javascript" id="target2">// Function to mask cloud from built-in quality band
+  // information on cloud
+  var maskS2clouds = function(image) {
+    var qa = image.select('QA60');
+  
+  // Information in this band is stored in Bits. Bits work in multiples of 2's
+  // Bits 10 (2^10 = 1024) and 11 (Bits 2^11 = 2048) are clouds and cirrus, respectively.
+  // These need to be set to zero i.e. .eq(0) to represent clear conditions
+    var clouds = qa.bitwiseAnd(Math.pow(2, 10)).eq(0);
+    var cirrus = qa.bitwiseAnd(Math.pow(2, 11)).eq(0);
+  // bitwiseAnd() is the function to recognise we are referring to the 2^x stored Bit
+    
+    var mask = clouds.and(cirrus) // add the two cloud layers together.
+  
+    return image.updateMask(mask);
+  };
+  
+  // run the mask cloud function over each image in the s2 collection
+  var s2_cloudmask = s2.map(maskS2clouds);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>      
+        
+  <p>The above code is complicated, so let’s make sure we are happy with the output. Let’s do this by plotting an unmasked vs. masked image.
+  
+  <pre><p><code class="javascript" id="target3">// Let's take a look at what this function is doing...
+  
+  // Print the unmasked dataset sorting it from the most to least cloudy image
+  print(s2.sort('CLOUDY_PIXEL_PERCENTAGE', false), 'S2 collection clouds'); // false sorts the collection in descending order
+  
+  // We can select the most cloudy image by sorting the list in descending 
+  // order and selecting the first image
+  Map.addLayer(s2.sort('CLOUDY_PIXEL_PERCENTAGE', false).first(), 
+                {min:0, max:3000, bands:['B4','B3','B2']}, 'Cloudy image first');
+  
+  // Plot the cloud mask layer QA60
+  Map.addLayer(s2_cloudmask.sort('CLOUDY_PIXEL_PERCENTAGE', false).first().select('QA60'), 
+                {min:0, max: 1}, 'Cloud mask', false);
+  
+  // Let's now plot the image with the cloud mask applied
+  Map.addLayer(s2_cloudmask.sort('CLOUDY_PIXEL_PERCENTAGE', false).first(), 
+                {min:0, max:3000, bands:['B4','B3','B2']}, 'Cloud masked image');</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <img src="img/3_img4.png" width="650" alt="" title="" />
+  
+  <hr>
+  
+  <p><strong>Processing</strong>
+  
+  <p>Next we will make a custom function to clip the image to our AOI and add a band to the image containing NDVI values. We will use the normalizedDifference() function and apply it over the near infra-red and red bands. Make sure you use the correct Bands here. For Sentinel-2 band B8 = NIR and B4 = RED. Lastly, we will rename the new band to ‘NDVI’. Note that the function is now nested inside the map function. Print out the new ImageCollection to view the new band.
+  
+  <pre><p><code class="javascript" id="target4">var s2_ndvi = s2_cloudmask.map(function(image) {
+      var s2_clip = image.clip(geometry)
+      return s2_clip.addBands(s2_clip.normalizedDifference(['B8', 'B4']).rename('NDVI'))
+  });
+  
+  print(s2_ndvi, 's2 with NDVI');</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <img src="img/3_img5.png" width="650" alt="" title="" />
+  
+  <hr>
+  
+  <p><strong>Visualisation</strong>
+  
+  <p>Next we will create a time-series plot over the NDVI band of the ImageCollection. This is done using the ui.Chart group of functions. The function you chose depends on the type of data you are using. In this case, we are running an image series over a single region, so we will use ui.Chart.image.series(). The primary inputs here are: the ImageCollection, area of interest (geometry), a reducer, the scale and the x-axis property (which defaults to ‘system:time_start’). In GEE, calculations that summarise your data spatially are called reducers and can be called using the ee.Reducer group of functions. Here we will use ee.Reducer.median() to calculate the median NDVI values across our area of interest.
+  
+  Lastly, we can specify details for the chart, including the type of chart and then label options. Run print() to see the output of the chart in your console. Hover your cursor over the chart to see interactive details. For more details on customizing your charts see: https://developers.google.com/chart/interactive/docs   
+  
+  <pre><p><code class="javascript" id="target5">var plotNDVI = ui.Chart.image.series(NDVI, geometry, ee.Reducer.median(), 
+  // we use an image based chart, with image, geom & reducer
+        10, 'system:time_start') // scale, x-axis property
+                      .setChartType('LineChart').setOptions({
+                        title: 'NDVI time series',
+                        hAxis: {title: 'Date'},
+                        vAxis: {title: 'NDVI'},
+                        legend: {position: "none"},
+                        lineWidth: 1,
+                        pointSize: 3
+        });
+        
+  // Display the chart
+  print(plotNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <img src="img/3_img6.png" width="650" alt="" title="" />
+  
+  <p> There are many other chart types available. To look at all of the available options see: <a href="https://developers.google.com/chart/interactive/docs" target="_blank">customisable charts</a>
+  
+  <p> Let's visualise the seasonal highs and lows of NDVI. To do this we will need to summarise the ImageCollection using a chosen summary statistic. In this case, we use median()
+  
+  <pre><p><code class="javascript" id="target6">// Filter NDVI image for January and August, respectively and create NDVI mean composite image
+  var NDVI_jan = NDVI.filterDate('2020-01-01', '2020-02-01').median();
+  var NDVI_aug = NDVI.filterDate('2020-08-01', '2020-09-01').median();</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <p> As shown in Practical 1, there are lot of different options for creating your own customisable palettes. However, there are also 
+        several palettes built into GEE. To look at all of them go here: <a href="https://github.com/gee-community/ee-palettes" target="_blank">EE palettes</a>
+  <br> 
+  <br>These palettes were created by a GEE user under the name 'gena' and turned into a package. To load external packages we use the 
+  require() function. Follow the details on the EE palettes link to load different colour palettes into your GEE session.
+  
+  <pre><p><code class="javascript" id="target7">var palettes = require('users/gena/packages:palettes');
+  var ndvi_pal = palettes.colorbrewer.RdYlGn[9];</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <p>Now add the seasonal highs and lows to your map:
+  
+  <pre><p><code class="javascript" id="target8">// Display NDVI results on map
+        Map.centerObject(geometry);
+        
+  // Add layers to the map
+  Map.addLayer(NDVI_jan, {min:0, max:1, palette: ndvi_pal}, 'NDVI Jan');
+  Map.addLayer(NDVI_aug, {min:0, max:1, palette: ndvi_pal}, 'NDVI Aug');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <img src="img/3_img7.png" width="650" alt="" title="" />
+  
+  <hr>
+  
+  <p><strong>Exporting data</strong>
+  
+  <p> We'll now go through three ways to export your data
+  
+  <p>1) The first option is to export the data directly from the chart produced earlier and save it as a csv. Do this by selecting the pop out window.
+  
+  <p>2) Convert the ImageCollection to a FeatureCollection and then export it as a csv
+  
+  <p> This method is done using the Export functions. There a few options on how to export your data and a few places to export it to.
+        This includes exporting to your Google Drive account, to Cloud Storage or as an Asset within your GEE acount. Unfortunately there are
+        no easy options to directly download data from GEE (with a few exceptions).
+  
+  <p> Firstly, we need to create a function that extracts the dates and NDVI values from the ImageCollection. Secondly, we then create 
+        a feature for each image (with a null geometry) and place the dates and NDVI values inside each feature. We then map() the function 
+        over the ImageCollection.
+  
+  <pre><p><code class="javascript" id="target9">// Create a function that takes an image, calculates the median over a
+  // geometry and returns the value and the corresponding date as a feature.
+  var convert_to_FC = function(image){
+        var date = image.get('system:time_start');
+        var value = image.reduceRegion(ee.Reducer.median(), geometry).get('NDVI');
+        var feature = ee.Feature(null, {'system:time_start': date, 
+                                     'date': ee.Date(date).format('Y/M/d'), 
+                                     'value': value});
+        return feature;
+        };
+  
+  // Apply the function to each image in the NDVI ImageCollection.
+  var NDVI_table = NDVI.map(convert_to_FC);
+  print('NDVI table:', NDVI_table);</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <p>We then export the FeatureCollection or table to our Google Drive account, specificying the collection, variables (selectors), providing a file name (description) and a fileFormat (which defaults to CSV)
+  
+  <pre><p><code class="javascript" id="target10">// Export the time series as a csv.
+  Export.table.toDrive({
+        collection: NDVI_table, 
+        selectors: 'date, value',
+        description: 'NDVI_time_series',
+        fileFormat: 'CSV'
+        });</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <p>3) Export the NDVI map as a raster</p>
+  
+  <p>Here we use one of the earlier mapped NDVI visualisations and export this directly to our Google Drive account. Downloading the image may allow flexibility in analysis or visualisations in different softwares.</p>
+  
+  <pre><p><code class="javascript" id="target11">Export.image.toDrive({
+        image: NDVI_aug,
+        description: 'NDVI_Aug_example',
+        scale: 100 // this can go down to 10, to match S2 original resolution
+      });</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <p>Once you have run the Export functions, you will need to go to your task tab to execute the task.</p>
+  
+  <img src="img/3_img8.png" width="650" alt="" title="" />
+  
+  <hr>
+  
+  <p><strong>Practical Assignment #3</strong>
+  
+  <pre><p><code class="javascript" id="target12">// Use the Sentinel-2 data to explore the NDVI trends in a region/date that interests you
+  // ..............................................
+        
+  // Delete the geometry, and create your own geometry
+  // Tip: use a smaller geometry for shorter processing times
+  // Note: bigger geometries have issues of their own, which you can explore
+  // ..............................................
+        
+  // Provide some commentary (2-3 sentences) with your assignment on the NDVI trends in your region
+  // ..............................................</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+  
+  <p><strong>Sharing your code to complete the practical assignments </strong>
+  To complete the practical exercise below you need to know how to share your scripts with us. Simply click on "Get Link" - the actual button NOT the dropdown arrow - Then click the "Click to copy link" button and paste that in an email to us <a href="mailto:ots.online.education@gmail.com">ots.online.education@gmail.com</a>. !NB! Please remember to add the prac number in the header.
+  
+  <hr>
+  Please share your feedback on this practical by completing this quick (2 min) <a href="https://docs.google.com/forms/d/e/1FAIpQLSe7ySSEp6HXgfLl93f7QuzP36Rt4dOCp6JtMZHvOabtANfl1Q/viewform?usp=pp_url" target="_blank">survey</a>. Thank you!
+  </div>
+    
+  <div id="sidebar">
+      <h3>MENU</h3>
+      <ul>
+      <li><a href="../index.html">HOME</a></li>
+      <nav class="drop-down-menu">
+      <input type="checkbox" class="activate" id="accordion-1" name="accordion-1">
+      <label for="accordion-1" class="menu-title">> COURSE 2020</label>
+      <div class="drop-down">
+      <li><a href="">Check again later</a></li>
+      </div>
+      </nav>
+      <nav class="drop-down-menu">
+      <input type="checkbox" class="activate" id="accordion-2" name="accordion-2">
+      <label for="accordion-2" class="menu-title">> COURSE 2021</label>
+      <div class="drop-down">
+      <li class="selected"><a href="1_prac.html">[Prac1] Getting started</a></li>
+      <li><a href="2_prac.html">[Prac2] Spectral indices</a></li>
+      <li><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
+      <li><a href="4_prac.html">[Prac4] Interactive App</a></li>
+      <li><a href="5_prac.html">[Prac5] Time series-Fire</a></li>
+      <li><a href="6_prac.html">[Prac6] Change analysis</a></li>
+      <li><a href="7_prac.html">[Prac7] Landcover class</a></li>
+      <li><a href="8_prac.html">[Prac8] Species patterns</a></li>
+      <li><a href="9_prac.html">[Prac9] Your own data</a></li>
+      </div>
+      </nav>
+      <li><a href="10_contact.html">CONTACT US</a></li>
+      </nav>
+      </ul>
+      
+      <h3></h3>
+      </div>
+      
+      <div style="clear: both;"> </div>
+      <ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>	
+      
+      <div id="footer">
+      <p>&copy; Copyright 2021 BioGIS | Designed by <a href="http://www.biogis.co.za" target="_blank">BioGIS</a></p>
+      </div>
+      
+      </div>
+      <!-- 2. Include library -->
+      <script src="../clipboard.min.js"></script>
+      
+      <!-- 3. Instantiate clipboard -->
+      <script>
+            var clipboard = new ClipboardJS('.btn');
+      
+            clipboard.on('success', function (e) {
+              console.log(e);
+            });
+      
+            clipboard.on('error', function (e) {
+              console.log(e);
+            });
+      </script>
+      </body>
+      </html>
+      

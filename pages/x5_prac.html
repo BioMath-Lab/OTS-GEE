@@ -20,12 +20,12 @@
 <div id="content">
 <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
 <p><strong>Practical 5: Fire frequency in the Kruger National Park, South Africa</strong>
-<br>
-Access the completed practical script <a href="https://code.earthengine.google.com/63ca391e02cb163916a03a2c45200359?noload=true">here</a>.<br>
-Also please download the following shapefile delineating <a href="https://drive.google.com/file/d/1Acs8PLINsehpsZvDj-g9BnAkLuVYKVv3/view?usp=sharing">regional boundaries</a> in Kruger.
+<br>by Sandra MacFadyen @ <a href="https://www0.sun.ac.za/biomath/">https://www0.sun.ac.za/biomath</a>
+<br>Access the practical script <a href="https://code.earthengine.google.com/a320787ea8a9056e8b4fcba139e012b7">here</a>.
+<br>Also please download the following shapefile delineating <a href="https://drive.google.com/file/d/1Acs8PLINsehpsZvDj-g9BnAkLuVYKVv3/view?usp=sharing">regional boundaries</a> in Kruger.
 <br><br>
 <strong>Learning Objectives</strong>
-By the end of this practical you should be able to:
+<br>By the end of this practical you should be able to:
 <br>
 <ol>
 <li>Access terrain model data from SRTM</li>
@@ -36,49 +36,66 @@ By the end of this practical you should be able to:
 </ol>
 <hr>
 <p><strong>Introduction</strong>
-Fire is an important driver of landscape pattern, as different fire regimes directly affect biomass production, composition and structure of vegetation. 
+<br>Fire is an important driver of landscape pattern, as different fire regimes directly affect biomass production, composition and structure of vegetation. 
 Indirectly, and together with other landscape features like geology, rainfall and topography, fire also influences animal distribution patterns. 
 In savanna systems, interactions between herbivory, fire frequency, fire intensity and season can alter tree:grass ratios and system states. 
 For example, in the Kruger National Park (Kruger) landscapes that are burnt frequently by high intensity fires generally have less woody cover than those 
 burnt less frequently, at low intensities. Fire regime can also influence vegetation composition, where fire adapted species may dominate in frequently burnt areas, 
-while those areas less frequently burnt may provide important refugia for more fire sensitive species (Smit et al. 2013). 
+while those areas less frequently burnt may provide important refugia for more fire sensitive species (<a href="https://onlinelibrary.wiley.com/doi/full/10.1111/j.1600-0587.2012.07555.x" target="_blank">Smit et al. 2013</a>). 
 Fire is therefore an important component for biodiversity conservation planning but how do we find information about fire frequencies, 
 intensities and seasons for our areas of interest if we haven’t monitored it directly? 
- GEE has a number of different <a href="https://developers.google.com/earth-engine/datasets/tags/fire">datasets tagged &quot;fire&quot;</a>. 
+ GEE has a number of different <a href="https://developers.google.com/earth-engine/datasets/tags/fire" target="_blank">datasets tagged &quot;fire&quot;</a>. 
 We'll just be looking at one in this practical but I encourage you to explore the others in your own time. Let’s get started……</p>
 <hr>
 <p><strong>Data import</strong>
-In addition to datasets available on Google Earth Engine, in this practical we will learn how to import shapefiles from your local hard-drive into GEE by 
-uploading them as new assets (Fig. 1).</p>
+<br>In addition to datasets available on Google Earth Engine, in this practical we will learn how to import your own data (like shapefiles or raster grids)
+into your workspace from your local hard-drive by uploading them as new assets (Fig. 1).</p>
 
 <pre><p><code class="javascript" id="target1">var dem = ee.Image("CGIAR/SRTM90_V4");
 var FireCCI = ee.ImageCollection('ESA/CCI/FireCCI/5_1');</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
   
-<p>The first dataset, <a href="https://developers.google.com/earth-engine/datasets/catalog/CGIAR_SRTM90_V4">SRTM90</a>, is a Digital Elevation Model (DEM) from the Shuttle Radar Topography Mission (SRTM). The second, <a href="https://developers.google.com/earth-engine/datasets/catalog/ESA_CCI_FireCCI_5_1">FireCCI51</a>, is a Fire_cci Burned Area pixel product version 5.1 from MODIS. Figure 1 below, describes how to import the boundary shapefile for the Kruger National Park (Kruger) from files stored locally on your hard-drive. You can download and save the required files from <a href="https://drive.google.com/file/d/1omD5vPk4LMQSnC2BHJCg6GlnmpzBsFQG/view?usp=sharing">here</a>.</p>
-<p><img src="/img/prac6_f1.png" alt="">
-<strong>Figure 1:</strong> Process to upload a shapefile into GEE as a new assest imported into the script as a FeatureColection</p>
+<p>The first dataset, <a href="https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003">SRTM30</a>, is a 30m Digital Elevation Model (DEM) 
+from the Shuttle Radar Topography Mission (SRTM). The second, <a href="https://developers.google.com/earth-engine/datasets/catalog/ESA_CCI_FireCCI_5_1">FireCCI51</a>, 
+is a Fire_cci Burned Area pixel product version 5.1 from MODIS. 
+Figure 1 below, describes how to import the boundary shapefile for the Kruger National Park (Kruger) from files stored locally on your hard-drive. 
+The process is similar to import image files (e.g. GeoTIFF or TFRecords), which we'll go through in class.
+Download and save the required files from <a href="https://drive.google.com/file/d/1omD5vPk4LMQSnC2BHJCg6GlnmpzBsFQG/view?usp=sharing">here</a>.</p>
+<p><img src="img/5_img2.png" alt="">
+<br><strong>Figure 1:</strong> Process to upload a shapefile into GEE as a new assest imported into the script as a FeatureColection</p>
 <hr>
 <p><strong>Filtering data</strong>
-First define your variables for the temporal and spatial windows of interest. We will use these variables to filter our data before processing.</p>
+<br>First define your variables for the temporal and spatial windows of interest. 
+We will use these variables to filter our data before processing.</p>
 
-<pre><p><code class="javascript" id="target2">var startDate = ee.Date.fromYMD(2001,1,1);
+<pre><p><code class="javascript" id="target2">// Set your start and end dates to filter by
+var startDate = ee.Date.fromYMD(2001,1,1);
 var endDate = ee.Date.fromYMD(2018,12,31);
 var years = ee.List(fire.aggregate_array('year')).distinct().sort();
 
-var knp_geo = knp.geometry();
-var srtm = dem.clipToCollection(knp);
+// Convert your imported "Table" asset to a geometry
+// You'll need it later for clipping ImageCollections
+var zones_geo = zones.geometry();
 
+// Clip the DEM to Kruger
+var srtm = dem.clipToCollection(zones);
+
+// Filter the Burn Scars by date and clip using a function and set band properties
 var fire = FireCCI
-    .filterBounds(knp_geo)
+    .select(['BurnDate','ConfidenceLevel'])
     .filterDate(startDate, endDate)
-    .map(function(img) { // This function adds year as property to each image
-      return img.set('year', ee.Image(img).date().get('year'));
-  });</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+    .map(function(img) { // Use function to add year as property to each image
+      return img
+           .clip(zones_geo)
+           .set('year', ee.Image(img).date().get('year'))
+       	   .set('yrmnth',ee.Date.parse('YYYY_MM_DD', (img.get('system:index')))
+		   .format('YYYY_MM'));
+    });
+print('Check fire', fire); // Use print() to check your results</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
 <p><strong>Processing</strong>
-Now build a function to remove all burn scars from the fire dataset that have a confidence interval of less than 50%.</p> 
+<br>Now build a function to remove all burn scars from the fire dataset that have a confidence interval of less than 50%.</p> 
  
 <pre><p><code class="javascript" id="target3">// Define a function to remove all fires <50% confidence interval
 var confMask = function(img) {
@@ -87,7 +104,8 @@ var confMask = function(img) {
   return img.updateMask(level).select('BurnDate'); //return only 'BurnDate' band};</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
   
-<p>Run the function and summarise the burn scars by the day-of-year (doy) most frequently burnt, followed by the the frequency areas are burnt in Kruger annually from 2001 until 2018.</p>
+<p>Run the function and summarise the burn scars by the day-of-year (doy) most frequently burnt, followed by the the frequency areas are burnt 
+in Kruger annually from 2001 until 2018.</p>
 <pre><p><code class="javascript" id="target4">// Most frequently burnt DOY
 var fireDOY_list = years.map(function(year) {
   return fire
@@ -118,10 +136,68 @@ var cntFiresDOY = ee.ImageCollection.fromImages(fireCnt_list);
 <p>Summarise these results to represent the most frequently burnt day-of-year (doy) and the frequency areas have burnt in 
 Kruger over the last 18 years (2001-2018).
 
+<pre><p><code class="javascript" id="target5">var modFires = doyFires.mode().clip(knp_geo);
+var cntFires = cntFiresDOY.sum().clip(knp_geo);
+</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<hr>
+<p><strong>Charting</strong>
+<br>To plot these results, first define your chart parameters (e.g. title and axis labels), then create the line chart, 
+incorporating these pre-defined chart parameters and print it to the console as follows:
 
+<pre><p><code class="javascript" id="target6">xxxx</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
 
+<p><img src="img/5_img3.png" width="650" alt="" title=""/></p>
+<p><strong>Figure 2:</strong>Line chart the number of days a fire occured in Kruger from 2001 to 2018</p>
+<hr>
 
-  
+<p><strong>Visualisation</strong>
+<br>To visualise the long-term summaries of your results, first setup your map elements as you've done in previous practicals.
+
+<pre><p><code class="javascript" id="target7">xxxx</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<p><img src="img/5_img4.png" width="650" alt="" title=""/></p>
+<p><strong>Figure 3:</strong>Map with layers indicating the most frequently burnt doy-of-year (doy) and the fire frequency in Kruger from 2001 to 2018</p>
+<hr>
+
+<p><strong>Hillshade and Animation</strong>
+<br>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+<pre><p><code class="javascript" id="target8">xxxx</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<p><img src="img/5_img5.gif" width="200" alt="" title=""/></p>
+<p><strong>Figure 4:</strong>Animation of days fires occurred in Kruger from 2001 to 2018. 
+Light colours represent fires that happened earlier in the year, while dark colours are those that burnt in later months</p>
+<hr>
+
+<p><strong>Data Export</strong>
+<br>To export the animation, simply right mouse-click and select Save Image As… to save the animation locally as a .GIF file to your hard-drive.
+As a last step is always "save your script".
+
+<pre><p><code class="javascript" id="target9">xxxx</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<p><img src="img/5_img5.gif" width="200" alt="" title=""/></p>
+<p><strong>Figure 4:</strong>Animation of days fires occurred in Kruger from 2001 to 2018. 
+Light colours represent fires that happened earlier in the year, while dark colours are those that burnt in later months</p>
+<hr>
+
+<p><strong>Practical Assignment #5</strong>
+<pre><p><code class="javascript" id="target10">// To complete the practical exercise below share
+// your scripts and App URL with us, as described above
+// !NB! Remember to add the prac number in the header
+// Also see https://biomath-lab.github.io/OTS-GEE/pages/4_prac.html for more help
+// -----------------------------------------------------------
+
+// Generate your own App using rainfall or any other climate variable*
+// to describe how values differ from one region to the next
+// * Don't forget CHIRPS is only available for the Southern Hemisphere
+// [HINT: Lines 213 to 288]
+
+// Go crazy! I cant wait to see what you come up with :)</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+<hr>
+<p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1AShA7pBEcRrUn7a0pA8fEq8qSismI5l2CIOk-Wij-Cw/viewform" target="_blank">quick (2 min) survey.</a> Thank you.</p>
 </div>
 
 <div id="sidebar">

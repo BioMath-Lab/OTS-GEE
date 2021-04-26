@@ -61,6 +61,7 @@ var MOD13Q1 = ee.ImageCollection('MODIS/006/MOD13Q1');</code><button class="btn"
 The second, <a href="https://developers.google.com/earth-engine/datasets/catalog/WCMC_WDPA_current_polygons" target="_blank">WDPA</a>, contains polygons of all the world's protected areas.
 The third, <a href="https://developers.google.com/earth-engine/datasets/catalog/UCSB-CHG_CHIRPS_PENTAD" target="_blank">CHIRPS</a>, is a gridded rainfall time series dataset (Funk et al 2015) and the last,
 <a href="https://developers.google.com/earth-engine/datasets/catalog/MODIS_006_MOD13Q1" target="_blank">MOD13Q1</a>, provides vegetation indexes (NDVI and NDVI) depicting vegetation 'greenness' per 250m pixel.
+<hr>
 
 <p><strong>Filtering data</strong>
 <br>First define variables for the temporal window of interest, including a start-date and end-date.
@@ -118,6 +119,7 @@ var rainClip = rainAll.map(clipF);
 var ndviAll = MOD13Q1.select('NDVI')
     .filterDate(startDateX, endDate);</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
+<hr>
 
 <p><strong>Processing</strong>
 <br>To plot the long-term patterns of accumulated monthly rainfall across Awash National Park from 1981 to 2019,
@@ -140,9 +142,9 @@ var chart_mnthRain = ui.Chart.image.series({
 .setOptions(opt_chart_mnthRain);
 // Use the print() command to display your chart in the code editor console
 print(chart_mnthRain);</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre> 
+<script>new ClipboardJS('.btn');</script></p></pre> 
 
-<img src="img/4_img3a.png" width="550" alt="" title="" />
+<p><img src="img/4_img3a.png" width="550" alt="" title="" />
 
 <p>To generate a line chart of annual rainfall though, we first need to summarise our dataset before trying to plot it. 
 This will help us avoid a "memory capacity exceeded" error.
@@ -202,8 +204,9 @@ var chart_annualRain = ui.Chart.image.series({
 var rainAnnual = rainClip.mean();
 // var rainAnnual = rainAll.mean().clip(ethiopia); // Would also work
 // print('Check Long-term mean', rainAnnual); // Use print() to check your results</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
+<script>new ClipboardJS('.btn');</script></p></pre>
 
+<br><hr>
 <p><strong>Visualisation</strong>
 <br>Now let's plot these results on a map. First define centre the map to Ethiopia.
 Then add Ehtiopia's boundary, the long-term mean annual rainfall for Ethiopia and finally the boundary for Awash National Park.
@@ -216,9 +219,9 @@ Map.addLayer(ethiopia, {color: '006600', strokeWidth: 5}, 'Ethiopian Boundary');
 Map.addLayer(rainAnnual, ltVis, 'Long-term Annual Rainfall');
 // Lastly, add Awash's boundary
 Map.addLayer(awash,{color: 'black'}, 'Awash National Park',true, 1);</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
+<script>new ClipboardJS('.btn');</script></p></pre>
 
-<img src="img/4_img2.png" width="650" alt="" title="" />
+<p><img src="img/4_img2.png" width="650" alt="" title="" />
 
 <p><strong>More Charting Options</strong>
 <br>We can also summarise these annual rainfall results by different regions i.e. Awash National Park and Ethiopia.
@@ -261,6 +264,7 @@ var chart_regions =
 <p>Now instead of using print() to see this chart in the GEE console, we'll instead add it to the map layout.
 To do this, first make sure the print() function above is commented out. Then we will start adding the different elements
 to our map:
+<hr>
 
 <p><strong>Adding additional elements to your map</strong>
 <br>Before making our App we need to add more information to our map, like a title or summary chart.
@@ -289,6 +293,7 @@ Map.add(panel);
 panel.add(chart_regions);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <img src="img/4_img1.png" width="650" alt="" title="" />
+<hr>
 
 <p><strong>Save your map online</strong>
 <br>Now for the fun part! We can share this map with the world by creating a GEE Application (App).
@@ -318,6 +323,7 @@ To do so, follow these steps instead of the ones above.
 
 <p><strong><a href="https://biogis.users.earthengine.app/view/rainprac4">And voilà! Your first GEE App!</a></strong></p>
 <img src="img/4_img6.png" width="650" alt="" title="" />
+<hr>
 
 <p><strong>Relationship between annual rainfall and vegetation 'greenness'</strong>
 <br>Taking things even further, we could also combine the calculation of annual mean rainfall with annual mean NDVI for Ethiopia
@@ -380,6 +386,7 @@ var chart_RainNDVI = ui.Chart.image.series({
 }).setOptions(opt_chart_RainNDVI);
 // print(chart_RainNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target13b">Copy</button>
 <script>new ClipboardJS('.btn');</script></p></pre>
+<hr>
 
 <p><strong>Correlation between annual rainfall and vegetation 'greenness'</strong>
 <br>We could also directly check the correlation between the two variables as follows:
@@ -426,6 +433,7 @@ var chart_RainNDVI = ui.Chart.image.series({
 // print(chart_RainNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target14">Copy</button>
 <script>new ClipboardJS('.btn');</script></p></pre>
 <img src="img/4_img8.png" width="500" alt="" title=""/>
+<hr>
 
 <p><strong>Data Export</strong>
 <br>To export the data shown in the created charts, you can simply maximise the chart and then click Download to
@@ -482,6 +490,7 @@ Export.image.toDrive({
   }
 });</code><button class="btn" id="copy-button" data-clipboard-target="#target16">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
+<hr>
 
 <p><strong>Sharing your code to complete the practical assignments</strong>
 <br>In the previous practical assignments, you shared your scripts with us using the "Get Link" button below to copy/paste 
@@ -511,7 +520,7 @@ and copy/paste the URL into an <a href="mailto:ots.online.education@gmail.com">e
 // Go crazy! I cant wait to see what you come up with :)</code><button class="btn" id="copy-button" data-clipboard-target="#target17">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
-<p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1CXibMNcoUTrz2HY2NG2KRefOUphv4DF3f3EiTCbCDL4/">quick (2 min) survey.</a> Thank you.</p>
+<p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1CXibMNcoUTrz2HY2NG2KRefOUphv4DF3f3EiTCbCDL4/viewform" target="_blank">quick (2 min) survey.</a> Thank you.</p>
 </div>
 
 <div id="sidebar">

@@ -92,11 +92,10 @@ var fire = FireCCI
     .filterDate(startDate, endDate)
     .map(function(img) { // Use function to add year as property to each image
       return img
-      .clip(zones_geo)
-      .set('year', ee.Image(img).date().get('year'))
-      .set('yrmnth',ee.Date.parse('YYYY_MM_DD', 
-	  (img.get('system:index'))).format('YYYY_MM'));
-	  });</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+              .clip(zones_geo)
+              .set('year', ee.Image(img).date().get('year'))
+              .set('yrmnth',ee.Date.parse('YYYY_MM_DD', (img.get('system:index'))).format('YYYY_MM'));
+    });</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
 <p><strong>Processing</strong>
@@ -108,7 +107,9 @@ var confMask = fire.map(function(img) {
   var level = conf.gt(50);
   return img
       .updateMask(level)
-      .select('BurnDate'); //return only 'BurnDate' band
+      .select('BurnDate') //return only 'BurnDate' band
+      .set('year', ee.Image(img).date().get('year'))
+      .set('yrmnth', ee.Image(img).get('yrmnth'));
 });</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
@@ -123,7 +124,15 @@ var fireCNT = ee.ImageCollection.fromImages(years.map(function(year) {
   return confMask
     .filterMetadata('year', 'equals', year) // Filter image collection by year
     .select('BurnDate').reduce(ee.Reducer.countDistinct()) // Reduce image collection by counting distinct doy
-    .set('year', ee.Date.fromYMD(year, 1, 1).format('YYYY'));
+    .set('year', year);
+}));
+
+// Concatenate the DOY per month into a new image collection
+var fireDOY = ee.ImageCollection.fromImages(years.map(function(year) {
+  return confMask
+    .filterMetadata('year', 'equals', year) // Filter image collection by year
+    .select('BurnDate').reduce(ee.Reducer.firstNonNull())
+    .set('year', year);
 }));</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
 <script>new ClipboardJS('.btn');</script></p></pre>
 
@@ -139,8 +148,8 @@ var visCnt = {
     palette:['eef5b7','99f74f','4ff7b0','4fc2f7','3940db',
             '7239db','db39db','db395c','7c1229']};
 
-// Define legend parameters for unique DOY
-// Light colours are earlier in the year, dark colours are later
+// // Define legend parameters for unique DOY
+// // Light colours are earlier in the year, dark colours are later
 var visDOY = {
     min:1, max:366, 
     palette:['008000','00b050','92d050','c9ee12','ffd966','bf8f00',
@@ -149,7 +158,7 @@ var visDOY = {
 // Add overall results to map
 Map.centerObject(zones, 7);
 // Calculate overall mode "on-the-fly" and add to KNP map
-Map.addLayer(fireCNT.mode(), visDOY, 'Most frequently burnt DOY', true, 0.8);
+Map.addLayer(confMask.mode(), visDOY, 'Most frequently burnt DOY', true, 0.8);
 // Calculate overall fire frequencies "on-the-fly" and add to KNP map
 Map.addLayer(fireCNT.sum(), visCnt, 'Fire frequency', false, 0.8);
 Map.addLayer(zones,{color: 'grey'}, 'Kruger Park', false, 0.8);</code><button class="btn" id="copy-button" data-clipboard-target="#target5b">Copy</button>
@@ -165,9 +174,9 @@ you can do this after saving your .gif outside of GEE.
 For example, using free image editor software like <a href="https://www.gimp.org/">GIMP</a>; online converters like <a href="https://ezgif.com/add-text" target="_blank">Ezgif</a>; 
 the <a href="https://geemap.org/">geemap</a> Python API; or even through <a href="https://cran.r-project.org/">R</a> with <a href="https://r-spatial.github.io/rgee/">rgee</a>.
 
-<pre><p><code class="javascript" id="target8">// Calculate hillshading and slope
+<pre><p><code class="javascript" id="target8">// Calculate hillshading
 var hillshade = ee.Terrain.hillshade(dem);
-print('Check hillshade', hillshade);
+// print('Check hillshade', hillshade);
 
 // Define the hillshade background legend parameters
 var srtmParams = {
@@ -234,23 +243,22 @@ Light colours represent fires that happened earlier in the year, while dark colo
 incorporating these pre-defined chart parameters and print it to the console as follows:
 
 <pre><p><code class="javascript" id="target6">// Monthly fire frequencies per year for the whole Park
-// Chart parameters
 var opt_cntFireMonth = {
   title: 'Monthly fire frequencies: Kruger National Park 2001 to 2018',
   pointSize: 3,
-  hAxis: {title: 'Year'},
+  hAxis: {title: 'Year Month'},
   vAxis: {title: 'Number of fires'},
 };
 
 // Plot day count of monthly fires
 var cntFireMonth_chart = ui.Chart.image.series({ // ui.Chart.image.byRegion
-  imageCollection: confMask.select('BurnDate'),
+  imageCollection: confMask.select('BurnDate'), // <------ CHANGED to confMask
   xProperty: 'yrmnth',
   region: zones_geo,
   reducer: ee.Reducer.countDistinct(),
-  scale: 250
+  scale: 1000 // <------ I CHANGED TO SCALE TO 1KM, TO SEE IF THAT HELPS WITH TIME-OUT ISSUES
 }).setOptions(opt_cntFireMonth).setChartType('LineChart');
-print(cntFireMonth_chart);;</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+print(cntFireMonth_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
 <script>new ClipboardJS('.btn');</script></p></pre>
 
 <p><img src="img/5_img3.png" width="650" alt="" title=""/></p>
@@ -266,7 +274,7 @@ var opt_fireYr = {
   colors: ['1d6b99', '39a8a7', '0f8755', '76b349']
 };
 
-// Same thing but summarised by region instead
+// create a chart with a reducer
 var fireYr_chart = ui.Chart.image.seriesByRegion({
   imageCollection: fireCNT, 
   regions: zones, 
@@ -290,21 +298,22 @@ For example, using your own point data intersected with bioclimatic variables, o
 
 <pre><p><code class="javascript" id="target9">// Add the two images together as xxx
 // Rename the bands at the same time
-var rivCov = river.addBands(cover).rename(['river','cover']);
-print('Check rivCov', rivCov);
+var rivFire = river.addBands(fireCNT.sum()).rename(['river','fire']);
+print('Check rivFire', rivFire);
 
 // Get a sample sample of points across
-var sample = rivCov.sampleRegions(knpGeo, null, 5000);//408453 vs 102046
+var sample = rivFire.sampleRegions(zones_geo, null, 5000);//408453 vs 102046
 // Or sample N points = geometry features to plot
-// var sample = coverHgt.sample({ region: knpAOI, scale: 30, numPixels: 4000, geometries: true}); 
-// Map.addLayer(sample.style({ color: 'blue', pointSize: 1 }), {}, 'samples');
-print('Check sample size', sample.size());
-print('Check sample info', sample);
+// var sample = rivFire.sample({ region: zones_geo, scale: 30, numPixels: 4000, geometries: true}); 
+Map.addLayer(sample.style({ color: 'blue', pointSize: 1 }), {}, 'samples');
+// print('Check sample size', sample.size());
+// print('Check sample info', sample);
 
-var chart = ui.Chart.feature.byFeature(sample, 'cover', 'river')
+// Plot scatterplot from sample intersects
+var chart = ui.Chart.feature.byFeature(sample, 'fire', 'river')
     .setChartType('ScatterChart')
     .setOptions({pointSize: 2, pointColor: 'blue', 
-              titleX: 'Tree Cover (Urban et al 2020)', 
+              titleX: 'Fire', 
               titleY: 'Distance to River',
               trendlines: { 0: {showR2: true, visibleInLegend: true} , 
                     1: {showR2: true, visibleInLegend: true}}

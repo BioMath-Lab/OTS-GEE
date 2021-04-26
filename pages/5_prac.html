@@ -22,18 +22,20 @@
 <p><strong>Practical 5: Fire frequency in the Kruger National Park, South Africa</strong>
 <br>by Sandra MacFadyen @ <a href="https://www0.sun.ac.za/biomath/">https://www0.sun.ac.za/biomath</a>
 <br>Access the practical script <a href="https://code.earthengine.google.com/ac8abe593c2166899a697b2cfed47ce4">here</a>.
-<br>Also please download this shapefile delineating <a href="https://drive.google.com/file/d/18sHZoXQ7Yrzd0gQWEBMl9W7ISvhpe25W/view?usp=sharing">regional boundaries</a> in Kruger.
-As well as this raster file representing <a href="https://drive.google.com/file/d/1ymTj9v89FphncmxDsyrEV9ln7jTxApPQ/view?usp=sharing">distance to main rivers</a>.
+<br>Also please download this shapefile delineating <a href="https://drive.google.com/file/d/1ymTj9v89FphncmxDsyrEV9ln7jTxApPQ/view?usp=sharing">regional boundaries</a> in Kruger.
+As well as this raster file representing <a href="https://drive.google.com/file/d/18sHZoXQ7Yrzd0gQWEBMl9W7ISvhpe25W/view?usp=sharing">distance to main rivers</a>.
 <br><br>
 <strong>Learning Objectives</strong>
 <br>By the end of this practical you should be able to:
 <br>
 <ol>
+<li>Import your own local data as assets (.shp and .tif)
 <li>Access terrain model data from SRTM</li>
 <li>Access monthly burn scar data</li>
 <li>Generate a hillshade using SRTM data</li>
 <li>Explore long-term patterns of fire frequency</li>
 <li>Build an animation and output for use in, for example, PowerPoint presentations</li>
+<li>Visualise relationships using scatterplots</li>
 </ol>
 <hr>
 <p><strong>Introduction</strong>
@@ -277,6 +279,9 @@ var fireYr_chart = ui.Chart.image.seriesByRegion({
     .setOptions(opt_fireYr);
 print(fireYr_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
 <script>new ClipboardJS('.btn');</script></p></pre>
+<p><img src="img/5_img5.png" width="650" alt="" title=""/></p>
+<p><strong>Figure 5:</strong> Number of fires by region from 2001 to 2018</p>
+
 <hr>
 
 <p><strong>More on charting: Visualising relationships</strong>
@@ -309,14 +314,20 @@ print(chart);</code><button class="btn" id="copy-button" data-clipboard-target="
 <hr>
 
 <p><strong>Practical Assignment #5</strong>
-<pre><p><code class="javascript" id="target10">// Please complete the practical exercise below and share
-// your script with us as you have done in previous practicals. 
-// This time, don't forget to also share your local assets with us.
-// (see figure below for help).
-// !NB! Remember to add the prac number in the header
-// Also see https://biomath-lab.github.io/OTS-GEE/pages/5_prac.html for more help</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
+<br>Please complete the practical exercise below and share your script with us, as you have done in previous practicals. 
+This time, don't forget to also share your local assets with use (see figure below for help).
+!NB! Remember to add the prac number in the header please.
 <p><img src="img/5_img6.png" width="400" alt="" title=""/></p>
+<pre><p><code class="javascript" id="target10">// Upload a local asset, a shapefile boundary for example, and share the assest 
+// before importing it as an import entry into your script
+// Import and filter a GEE dataset (e.g. FireCCI) of your choice
+// Generate an animation (with or without a hillshade)
+// Finally chart the results and group-by a region filed (hint: see lines 227-248)</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+
+<p><br>If you're feeling adventurous and would like to try the scatterplot example with Tree Cover by 
+<a href="https://koedoe.co.za/index.php/koedoe/article/view/1621">Urban et al (2020)</a>, you can download the .tif version of the 
+percentage tree cover for Kruger <a href="https://drive.google.com/file/d/1ERKSwrdjdqYkGqEHJSTwMs35OQKOtbjX/view?usp=sharing">here</a>.
 <hr>
 
 <p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1AShA7pBEcRrUn7a0pA8fEq8qSismI5l2CIOk-Wij-Cw/viewform" target="_blank">quick (2 min) survey.</a> Thank you.</p>

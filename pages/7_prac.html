@@ -177,6 +177,14 @@
   Map.addLayer(composite,rgb_vp, 'Landsat-8 RGB');
   </code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
   <script>new ClipboardJS('.btn');</script></pre>
+
+  <p>For more information on acuuracy metrics, check out these medium posts 
+    <ol>
+      <li> <a href="https://towardsdatascience.com/the-5-classification-evaluation-metrics-you-must-know-aa97784ff226">post 1</a></li>
+      <li> <a href ="https://gis.humboldt.edu/OLM/Courses/GSP_216_Online/lesson6-2/metrics.html#:~:text=The%20user%20and%20producer%20accuracy,the%20user's%20accuracy%20was%2071%25.&text=By%20analyzing%20the%20various%20accuracy,the%20analysis%20and%20classification%20results.">post 2</a></li>
+    <li>The use of kappa coefficient is not <a href="https://www.sciencedirect.com/science/article/pii/S0034425719306509?casa_token=bs5DJ6Q1IAEAAAAA:4mnFyd6kC57olnsFDoWRoN-d3cvnId583g4AnLe4Bkz8-RlW0tjXSEKMgN0wZNrh9wModyfsd6A">encouraged</a></li>  
+    </ol>
+  </p> 
   
   <pre><p><code class="language-js" id="target9">showTrainingData();
   function showTrainingData(){

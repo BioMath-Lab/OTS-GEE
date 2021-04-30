@@ -17,7 +17,7 @@ This course aims to train students, researchers and practitioners in the applica
 * Basic coding knowledge (e.g. R, Python, JavaScript)
 
 ## ITINERARY
-ourse Dates: April 19th – April 30th, 2021. 
+Course Dates: April 19th – April 30th, 2021. 
 Sessions: 2-hour daily sessions (Monday – Friday)
 Session times: 6pm – 8pm (Standard South African Time)
 

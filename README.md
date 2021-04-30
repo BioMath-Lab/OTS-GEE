@@ -1,4 +1,4 @@
-GOOGLE EARTH ENGINE FOR IN ECOLOGY AND CONSERVATION 
+GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION 
 ===================================================
 
 [![Build Status](https://travis-ci.org/buonzz/laravel-4-freegeoip.svg?branch=master)](https://travis-ci.org/buonzz/laravel-4-freegeoip)

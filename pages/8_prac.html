@@ -34,96 +34,129 @@ By the end of this practical you should be able to:
 </ol>
 <hr>
 
-The slides: bit.ly/2R8U5wO
+Access the slides here: bit.ly/2R8U5wO
+
+<p><strong>Introduction</strong>
+
+<p>For many land cover change analyses, particularly in forest detection, we have previously relied on annual (or longer interval) land classifications. This includes datasets such as <a href="https://developers.google.com/earth-engine/tutorials/tutorial_forest_02">Hansen Global Forest Change</a> or <a href="https://developers.google.com/earth-engine/datasets/catalog/NASA_MEASURES_GFCC_TC_v3">Global Forest Cover Change</a>. These data are immensely valuable and do a good job at compensating for difficulties in monitoring forests in regions with lots of clouds. However, there are limitations to understanding land cover change, when we only have a few observation epochs. This is where Continuous Change Detection and Classification comes in. Using all available satellite observations, the CCDC algorithm provides a more comprehensive approach to classifying images and detecting change. This practical gives an overview of this.</p>
+
+<br>
+Some useful resources to better understand the CCDC approach and implementation in GEE can be found below:
+<ol>
+<li><a href="https://doi.org/10.1016/j.rse.2005.07.013">Souza Jr. et al 2005</a></li>
+<li><a href="http://dx.doi.org/10.1016/j.rse.2014.01.011">Zhu & Woodcock 2014</a></li>
+<li><a href="https://doi.org/10.3389/fclim.2020.576740">Arévalo et al. 2020</a></li>
+<li><a href="https://gee-ccdc-tools.readthedocs.io/en/latest">Documentation for CCDC in GEE</a></li>
+<li><a href="https://parevalo-bu.users.earthengine.app">CCDC in GEE Apps</a></li>
+</ol>
+
+<hr>
+<br> 
+The analysis is broken into two parts. Part 1 addresses applying a classification to any time point in your ImageCollection. Part 2 addresses exporting variables for further analysis.
+
+Part 1 relies on two external libraries and shows aspects of the required workflow. I recommend trying the full workflow that relies on the excellent CCDC utilities package alone when running CCDC with your own (<a href="https://gee-ccdc-tools.readthedocs.io/en/latest">Documentation for CCDC in GEE</a>). 
 
 <p><strong>Part 1:</strong>
 Access the completed practical script <a href="https://code.earthengine.google.com/433c922d32a32098fae7b790b0d8d8e3">here</a>.
 
+<p>The end product for Part 1:</p>
+
+<img src="img/8_img0.png" width="650" alt="" title="" />
+
+<p>Set up your workspace. Start by creating your study region polygon.</p>
 
 <pre><p><code class="javascript" id="target1">/////////////////////////////////
-  ///// Select your study region //
-  /////////////////////////////////
+///// Select your study region //
+/////////////////////////////////
   
-  // Create a polygon/import a featureCollection
+// Create a polygon/import a featureCollection
   
-  /////////////////////////////////
-  ///// Set map options ///////////
-  /////////////////////////////////
+/////////////////////////////////
+///// Set map options ///////////
+/////////////////////////////////
   
-  Map.centerObject(studyRegion, 9);
+Map.centerObject(studyRegion, 9);
   
-  /////////////////////////////////
-  ///// Load extra libraries //////
-  /////////////////////////////////
+/////////////////////////////////
+///// Load extra libraries //////
+/////////////////////////////////
   
-  // The utilities package for ccdc is the best developed of the ccdc api's
-  var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
-  // the temporal segmentation package does a good job doing some basic ccdc functions
-  var temporalSegmentation = require('users/wiell/temporalSegmentation:temporalSegmentation');
-  // the palettes package for map outputs
-  var palettes = require('users/gena/packages:palettes');
+// The utilities package for ccdc is the best developed of the ccdc api's
+var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
+// the temporal segmentation package does a good job doing some basic ccdc functions
+var temporalSegmentation = require('users/wiell/temporalSegmentation:temporalSegmentation');
+// the palettes package for map outputs
+var palettes = require('users/gena/packages:palettes');</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>Next set up the required parameters for the CCDC analysis and load in the Landsat collection. Plot out the least cloudy image from the Landsat collection, which you can use to create your training data with the point tool.</p>
+
+<pre><p><code class="javascript" id="target2">  /////////////////////////////////
+///// Set up parameters /////////
+/////////////////////////////////
   
-  /////////////////////////////////
-  ///// Set up parameters /////////
-  /////////////////////////////////
+// Parameters for change detection algorithm
+var changeDetection = {
+  breakpointBands: ['GREEN','RED','NIR','SWIR1','SWIR2','NDFI'], // bands to use for regression
+  tmaskBands: ['GREEN','SWIR2'],
+  lambda: 20/10000, // tuning parameter
+  // minObservations: 6, // observation window
+  // chiSquareProbability: .99, // threshold for change detection
+  // minNumOfYearsScaler: 1.33, // min number of years to apply new fitting
+  // dateFormat: 2,
+  // maxIterations: 25000 // number of runs for LASSO regression convergence
+}
   
-  // Parameters for change detection algorithm
-  var changeDetection = {
-    breakpointBands: ['GREEN','RED','NIR','SWIR1','SWIR2','NDFI'], // bands to use for regression
-    tmaskBands: ['GREEN','SWIR2'],
-    lambda: 20/10000, // tuning parameter
-    // minObservations: 6, // observation window
-    // chiSquareProbability: .99, // threshold for change detection
-    // minNumOfYearsScaler: 1.33, // min number of years to apply new fitting
-    // dateFormat: 2,
-    // maxIterations: 25000 // number of runs for LASSO regression convergence
+// Overall parameters
+var params = {
+  start: '2000-01-01',
+  end: '2020-01-01',
+  ChangeDetection: changeDetection,
+  StudyRegion: studyRegion
   }
   
-  // Overall parameters
-  var params = {
-    start: '2000-01-01',
-    end: '2020-01-01',
-    ChangeDetection: changeDetection,
-    StudyRegion: studyRegion
-  }
+///////////////////////////////////////////
+///// Import & Pre-Process Landsat Data ///
+///////////////////////////////////////////
   
-  ///////////////////////////////////////////
-  ///// Import & Pre-Process Landsat Data ///
-  ///////////////////////////////////////////
-  
-  // Filter by date and a location in Brazil
-  var filteredLandsat = utils.Inputs.getLandsat() // using the utility package loaded earlier
+// Filter by date and a location in Brazil
+var filteredLandsat = utils.Inputs.getLandsat() // using the utility package loaded earlier
       .filterBounds(params.StudyRegion)
       .map(function(image) {return image.clip(studyRegion)})
       .filterDate(params.start, params.end)
   
-  print('collection size:',filteredLandsat.size())
+print('collection size:',filteredLandsat.size())
   
-  // Investigate landsat data
-  // Add the image with the least cloud to the map
-  Map.addLayer(filteredLandsat.sort('CLOUD_COVER').first(), 
+// Investigate landsat data
+// Add the image with the least cloud to the map
+Map.addLayer(filteredLandsat.sort('CLOUD_COVER').first(), 
                 {bands: ['RED', 'GREEN', 'BLUE'],min: 0,max: 0.3, gamma: 1.2}, 'Least cloudy image', false);
-  // Save the date of the image, which we use for creating a training data set
-  var img_date = ee.Date(filteredLandsat.sort('CLOUD_COVER').first().get('system:time_start')).format("yyyy-MM-dd").aside(print, 'Date cloud free image');
+// Save the date of the image, which we use for creating a training data set
+var img_date = ee.Date(filteredLandsat.sort('CLOUD_COVER').first().get('system:time_start')).format("yyyy-MM-dd").aside(print, 'Date cloud free image');
   
-  // At this point you can create your training data
-  // Use the point tool to create classes of data based on the cloudless image
+// At this point you can create your training data
+// Use the point tool to create classes of data based on the cloudless image
   
-  // Add our landsat dataset to the params dictionary
-  params.ChangeDetection['collection'] = filteredLandsat
-  print('Parameters:', params);
+// Add our landsat dataset to the params dictionary
+params.ChangeDetection['collection'] = filteredLandsat
+print('Parameters:', params);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/8_img1.png" width="650" alt="" title="" />
+
+<p>Now that we have defined our parameters, loaded in and pre-processed the landsat imagery, the CCDC alogrithm can be easily run. Using the temporalSegmentation package, you can chart out the CCDC segments for a specified point (i.e. pixel) and observe the break points detected.</p>
+
+<pre><p><code class="javascript" id="target3">///////////////////////////////////////////
+///// Run CCDC Algorithm //////////////////
+///////////////////////////////////////////
   
-  ///////////////////////////////////////////
-  ///// Run CCDC Algorithm //////////////////
-  ///////////////////////////////////////////
+var results = ee.Algorithms.TemporalSegmentation.Ccdc(params.ChangeDetection)
+print('CCDC results:',results);
   
-  var results = ee.Algorithms.TemporalSegmentation.Ccdc(params.ChangeDetection)
-  print('CCDC results:',results);
+// Add the harmonic regression segments to the chart
+// Drop a point within your study region to display the chart
   
-  // Add the harmonic regression segments to the chart
-  // Drop a point within your study region to display the chart
-  
-  temporalSegmentation.chartPoint({
+temporalSegmentation.chartPoint({
       image: results,
       point: geometry,
       bandName: 'NDFI',
@@ -131,185 +164,204 @@ Access the completed practical script <a href="https://code.earthengine.google.c
       callback: function (chart) {
         print(chart)
       }
-    })
+})</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
+      <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/8_img2.png" width="650" alt="" title="" />
+
+<p>In this chart, the CCDC algorithm suggests there was a change in land cover around early 2005. The y-axis shows changes in NDFI.</p>
+
+<p>At this point, it is a good idea to save the CCDC output to your asset. This will help further down the line, by saving memory and will make your code run a lot more smoothly. Once export, you can comment out this code and load the image back in from your assets.</p>
+
+<pre><p><code class="javascript" id="target4">///////////////////////////////////////////////////////
+/// Only run this bit once & save results to ASSETS ///
+///////////////////////////////////////////////////////
   
-  ///////////////////////////////////////////////////////
-  /// Only run this bit once & save results to ASSETS ///
-  ///////////////////////////////////////////////////////
+// var segments = temporalSegmentation.Segments(results) // Create temporal segments
   
-  // var segments = temporalSegmentation.Segments(results) // Create temporal segments
+// This is the image you will use for the rest of Part 1
   
-  // This is the image you will use for the rest of Part 1
+// // Export as asset. Include same options as for regular exports.
+// // Skip the image and pyramidingPolicy though, which gets defaulted.
+// segments.toAsset({
+//   description: 'ccdc_segments',
+//   region: studyRegion,
+//   scale: 30,
+//   crs: 'EPSG:4326'
+// })
   
-  // // Export as asset. Include same options as for regular exports.
-  // // Skip the image and pyramidingPolicy though, which gets defaulted.
-  // segments.toAsset({
-  //   description: 'ccdc_segments',
-  //   region: studyRegion,
-  //   scale: 30,
-  //   crs: 'EPSG:4326'
-  // })
+// This is the image you will use for Part 2
   
-  // This is the image you will use for Part 2
+// Export.image.toAsset({
+//   image: results,
+//   scale: 30,
+//   description: 'ccdc_L_raw',
+//   maxPixels: 1e13,
+//   region: studyRegion,
+//   pyramidingPolicy: {
+//   '.default': 'sample'
+//   }
+// })
   
-  // Export.image.toAsset({
-  //   image: results,
-  //   scale: 30,
-  //   description: 'ccdc_L_raw',
-  //   maxPixels: 1e13,
-  //   region: studyRegion,
-  //   pyramidingPolicy: {
-  //   '.default': 'sample'
-  //   }
-  // })
+// Load the CCDC results back in
+var segmentsImage = ee.Image('users/jdmwhite/ccdc_segments') // Load CCDC asset
+var segments = temporalSegmentation.Segments(segmentsImage) // Create temporal segments</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
+        <script>new ClipboardJS('.btn');</script></pre>
+
+<p>Once the CCDC image is loaded back in, we can now prepare the training and testing points for classification. The training points require a land cover type label and a date, which corresponds to the image the data was collected from.</p>
+
+<pre><p><code class="javascript" id="target5">///////////////////////////////////////////////////////
+/// Prepare data for classification ///////////////////
+///////////////////////////////////////////////////////
   
-  // Load the CCDC results back in
-  var segmentsImage = ee.Image('users/jdmwhite/ccdc_segments') // Load CCDC asset
-  var segments = temporalSegmentation.Segments(segmentsImage) // Create temporal segments
+// Prepare the training point data
+// Convert the ee.Geometry.Multipoint to FeatureCollections and set type & date values
   
-  ///////////////////////////////////////////////////////
-  /// Prepare data for classification ///////////////////
-  ///////////////////////////////////////////////////////
-  
-  // Prepare the training point data
-  // Convert the ee.Geometry.Multipoint to FeatureCollections and set type & date values
-  
-  // Forest
-  var forest = ee.FeatureCollection(forest.coordinates().map(function(p) {
+// Forest
+var forest = ee.FeatureCollection(forest.coordinates().map(function(p) {
     var type = ee.Feature(ee.Geometry.Point(p), {type: 1}) // 1 for forest
     var date_type = type.set('date', img_date)
     return date_type}))
   
-  // Other
-  var other = ee.FeatureCollection(other.coordinates().map(function(p) {
+// Other
+var other = ee.FeatureCollection(other.coordinates().map(function(p) {
     var type = ee.Feature(ee.Geometry.Point(p), {type: 0}) // 0 for other
     var date_type = type.set('date', img_date)
     return date_type}))
   
-  //Stratified random sampling for each class
-  // First for forest
-  var forest_table = forest.randomColumn({seed: 16});
-  var forest_training = forest_table.filter(ee.Filter.lt('random', 0.80));
-  var forest_test = forest_table.filter(ee.Filter.gte('random', 0.80));
+//Stratified random sampling for each class
+// First for forest
+var forest_table = forest.randomColumn({seed: 16});
+var forest_training = forest_table.filter(ee.Filter.lt('random', 0.80));
+var forest_test = forest_table.filter(ee.Filter.gte('random', 0.80));
   
-  // Next for other
-  var other_table = other.randomColumn({seed: 16});
-  var other_training = other_table.filter(ee.Filter.lt('random', 0.80));
-  var other_test = other_table.filter(ee.Filter.gte('random', 0.80));
+// Next for other
+var other_table = other.randomColumn({seed: 16});
+var other_training = other_table.filter(ee.Filter.lt('random', 0.80));
+var other_test = other_table.filter(ee.Filter.gte('random', 0.80));
   
-  //Combine our forest & other reference points for our training & test data
-  var trainingPoints = forest_training.merge(other_training);
-  var testingPoints = forest_test.merge(other_test).aside(print, 'test data');
+//Combine our forest & other reference points for our training & test data
+var trainingPoints = forest_training.merge(other_training);
+var testingPoints = forest_test.merge(other_test).aside(print, 'test data');
   
-  // Function to remove the random column, as it isn't needed for later
-  var removeProperty = function(feat, property) {
+// Function to remove the random column, as it isn't needed for later
+var removeProperty = function(feat, property) {
     var properties = feat.propertyNames()
     var selectProperties = properties.filter(ee.Filter.neq('item', property))
     return feat.select(selectProperties)
-  }
+}
   
-  // remove the random property in each feature
-  var trainingPoints = trainingPoints.map(function(feat) {
+// remove the random property in each feature
+var trainingPoints = trainingPoints.map(function(feat) {
     return removeProperty(feat, 'random')
-  })
-  print(trainingPoints, 'training points')
+})
+print(trainingPoints, 'training points')
   
   var testingPoints = testingPoints.map(function(feat) {
     return removeProperty(feat, 'random')
-  })
+  })</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+          <script>new ClipboardJS('.btn');</script></pre>
   
-  // Function to extract an image from a segment. Used when sampling and classifying.
-  // Provide whatever information you think helps the classification in this image
-  var mapSegment = function(segment) {
+<p>We now want to sampe the pixels for each point in the training and testing data. First use the mapSegment function to extract information for each temporal segment. Then select the images (by date) that you wish to classify. Lastly, sample the data for both training and testing datasets.</p>
+
+<pre><p><code class="javascript" id="target6">// Function to extract an image from a segment. Used when sampling and classifying.
+// Provide whatever information you think helps the classification in this image
+var mapSegment = function(segment) {
     var image = segment.toImage() 
     var rmse = image.select('.*_rmse')
     var ndfiCoefs = segment.coefs('NDFI')
     var fit = segment.fit()
     return ee.Image([rmse, ndfiCoefs, fit])
-  }
+}
   
-  // Create regression for two dates to provide quick feedback on classification results
-  var Segment_2005 = segments.findByDate('2001-01-01', 'closest') // selects image closest to this date
-  var Image_2005 = mapSegment(Segment_2005)
+// Create regression for two dates to provide quick feedback on classification results
+var Segment_2005 = segments.findByDate('2001-01-01', 'closest') // selects image closest to this date
+var Image_2005 = mapSegment(Segment_2005)
   
-  var Segment_2015 = segments.findByDate('2015-01-01', 'closest') // selects image closest to this date
-  var Image_2015 = mapSegment(Segment_2015)
-  print('test image:', Image_2015);
+var Segment_2015 = segments.findByDate('2015-01-01', 'closest') // selects image closest to this date
+var Image_2015 = mapSegment(Segment_2015)
+print('test image:', Image_2015);
   
-  // create the training data by overlaying the ref data on the segments
-  var trainingData = segments.sample(trainingPoints, mapSegment, 30) // select scale
-  print('trainingData', trainingData)
+// create the training data by overlaying the ref data on the segments
+var trainingData = segments.sample(trainingPoints, mapSegment, 30) // select scale
+print('trainingData', trainingData)
   
-  // create the training data by overlaying the ref data on the segments
-  var testingData = segments.sample(testingPoints, mapSegment, 30) // select scale
-  // print('testingData', trainingData)
+// create the training data by overlaying the ref data on the segments
+var testingData = segments.sample(testingPoints, mapSegment, 30) // select scale
+// print('testingData', trainingData)</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+            <script>new ClipboardJS('.btn');</script></pre>
+
+<p>Now we can train our classifier using a Random Forest. Once the classifier is trained, classify both extracted images. Next you can run the model evaluation.</p>
+
+<pre><p><code class="javascript" id="target7">///////////////////////////////////////////////////////
+/// Classify a single image ///////////////////////////
+///////////////////////////////////////////////////////
   
-  ///////////////////////////////////////////////////////
-  /// Classify a single image ///////////////////////////
-  ///////////////////////////////////////////////////////
-  
-  var classifier = ee.Classifier.smileRandomForest(50)
+var classifier = ee.Classifier.smileRandomForest(50)
     .train({
     features: trainingData,
     classProperty: 'type'
-    });
+});
   
-  var testClassification_2005 = Image_2005
+var testClassification_2005 = Image_2005
     .classify(classifier.setOutputMode('CLASSIFICATION'))
-  print(testClassification_2005, 'testClassification 2005');
+print(testClassification_2005, 'testClassification 2005');
   
-  var testClassification_2015 = Image_2015
+var testClassification_2015 = Image_2015
     .classify(classifier.setOutputMode('CLASSIFICATION'))
-  // print(testClassification_2015, 'testClassification 2015');
+// print(testClassification_2015, 'testClassification 2015');
   
-  ///////////////////////////////////////////////////////
-  /// Model Evaluation //////////////////////////////////
-  ///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+/// Model Evaluation //////////////////////////////////
+///////////////////////////////////////////////////////
   
-  //Test accuracy
-  var Test = testingData.classify(classifier);
-  print('ConfusionMatrix', Test.errorMatrix('type', 'classification'));
-  print('TestAccuracy', Test.errorMatrix('type', 'classification').accuracy());
-  print('Kappa Coefficient', Test.errorMatrix('type', 'classification').kappa());
-  print('Producers Accuracy', Test.errorMatrix('type', 'classification').producersAccuracy());
-  print('Users Accuracy', Test.errorMatrix('type', 'classification').consumersAccuracy());
-    
-  ///////////////////////////////////////////////////////
-  /// Visualisation /////////////////////////////////////
-  ///////////////////////////////////////////////////////
+//Test accuracy
+var Test = testingData.classify(classifier);
+print('ConfusionMatrix', Test.errorMatrix('type', 'classification'));
+print('TestAccuracy', Test.errorMatrix('type', 'classification').accuracy());
+print('Kappa Coefficient', Test.errorMatrix('type', 'classification').kappa());
+print('Producers Accuracy', Test.errorMatrix('type', 'classification').producersAccuracy());
+print('Users Accuracy', Test.errorMatrix('type', 'classification').consumersAccuracy());</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+              <script>new ClipboardJS('.btn');</script></pre>
+
+<p>The final step in Part 1, is to visualise the images and calculate a simple binary change from the two images (2015 minus 2005). We will add layers for RGB and NDFI and then add the classified layers.</p>
+
+<pre><p><code class="javascript" id="target8">///////////////////////////////////////////////////////
+/// Visualisation /////////////////////////////////////
+///////////////////////////////////////////////////////
   
-  // Creat a palette for the NDFI layer
-  var palette = palettes.crameri.bamako[10].reverse();
+// Creat a palette for the NDFI layer
+var palette = palettes.crameri.bamako[10].reverse();
   
-  // Add the layers to the map
-  // RGB images
-  Map.addLayer(Image_2005, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2005 RGB', false)
-  Map.addLayer(Image_2015, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2015 RGB', false)
-  // NDFI layers
-  Map.addLayer(Image_2005, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2005 NDFI', false)
-  Map.addLayer(Image_2015, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2015 NDFI', false)
-  // Classifications
-  Map.addLayer(testClassification_2005, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2005', false)  
-  Map.addLayer(testClassification_2015, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2015', false)  
+// Add the layers to the map
+// RGB images
+Map.addLayer(Image_2005, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2005 RGB', false)
+Map.addLayer(Image_2015, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2015 RGB', false)
+// NDFI layers
+Map.addLayer(Image_2005, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2005 NDFI', false)
+Map.addLayer(Image_2015, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2015 NDFI', false)
+// Classifications
+Map.addLayer(testClassification_2005, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2005', false)  
+Map.addLayer(testClassification_2015, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2015', false)  
   
-  /////////////////////////////
-  // Simple Binary Change /////
-  /////////////////////////////
+/////////////////////////////
+// Simple Binary Change /////
+/////////////////////////////
   
-  // Subtract the 2015 classification from the 2005 classification
-  var coverChange = testClassification_2015.subtract(testClassification_2005);
+// Subtract the 2015 classification from the 2005 classification
+var coverChange = testClassification_2015.subtract(testClassification_2005);
   
-  // Add the layer to the map. Red = loss; Grey = no change; Green = gain
-  Map.addLayer(coverChange,{palette: ['red','grey','green'], min: -1, max: 1},'Forest Cover Change 2005-2015',false);
+// Add the layer to the map. Red = loss; Grey = no change; Green = gain
+Map.addLayer(coverChange,{palette: ['red','grey','green'], min: -1, max: 1},'Forest Cover Change 2005-2015',false);
   
-  // Let's create a chart of the area of each class
-  var labels =[ 'gain','no change','loss' ];
-  var areaClass = coverChange.eq([1, 0, -1]).rename(labels);
-  // Calculate the area for each pixel
-  var areaEstimate = areaClass.multiply(ee.Image.pixelArea()).divide(1e6);
+// Let's create a chart of the area of each class
+var labels =[ 'gain','no change','loss' ];
+var areaClass = coverChange.eq([1, 0, -1]).rename(labels);
+// Calculate the area for each pixel
+var areaEstimate = areaClass.multiply(ee.Image.pixelArea()).divide(1e6);
   
-  // Set up the chart
-  var chart = ui.Chart.image.regions({
+// Set up the chart
+var chart = ui.Chart.image.regions({
     image: areaEstimate,
     regions: studyRegion,
     reducer: ee.Reducer.sum(),
@@ -320,30 +372,25 @@ Access the completed practical script <a href="https://code.earthengine.google.c
     title: 'Area by class (sqkm)',
     // is3D: true,
     colors: ['green','red','grey'],
-  });
-  print(chart);
+});
+print(chart);
+
+////////////////////////////
+////// legend for classes //
+////////////////////////////
   
-  // Note: this is a very basic approach to area estimation and recent literature
-  // suggests that biases due to classification errors may limit this approach.
-  // For more information on alternative approaches, 
-  // read the Arévalo et al. 2020 paper and see https://area2.readthedocs.io/en/latest/overview.html
+// See: https://mygeoblog.com/2016/12/09/add-a-legend-to-to-your-gee-map/
   
-  ////////////////////////////
-  ////// legend for classes //
-  ////////////////////////////
-  
-  // See: https://mygeoblog.com/2016/12/09/add-a-legend-to-to-your-gee-map/
-  
-  // set position of panel
-  var legend = ui.Panel({
+// set position of panel
+var legend = ui.Panel({
     style: {
       position: 'bottom-left',
       padding: '8px 15px'
     }
-  });
+});
    
-  // Create legend title
-  var legendTitle = ui.Label({
+// Create legend title
+var legendTitle = ui.Label({
     value: 'Land Cover Classes',
     style: {
       fontWeight: 'bold',
@@ -351,15 +398,15 @@ Access the completed practical script <a href="https://code.earthengine.google.c
       margin: '0 0 4px 0',
       padding: '0'
       }
-  });
+});
    
-  // Add the title to the panel
-  legend.add(legendTitle);
+// Add the title to the panel
+legend.add(legendTitle);
    
-  // Creates and styles 1 row of the legend.
-  var makeRow = function(color, name) {
+// Creates and styles 1 row of the legend.
+var makeRow = function(color, name) {
    
-        // Create the label that is actually the colored box.
+  // Create the label that is actually the colored box.
         var colorBox = ui.Label({
           style: {
             backgroundColor: '#' + color,
@@ -369,84 +416,103 @@ Access the completed practical script <a href="https://code.earthengine.google.c
           }
         });
    
-        // Create the label filled with the description text.
+  // Create the label filled with the description text.
         var description = ui.Label({
           value: name,
           style: {margin: '0 0 4px 6px'}
         });
    
-        // return the panel
+  // return the panel
         return ui.Panel({
           widgets: [colorBox, description],
           layout: ui.Panel.Layout.Flow('horizontal')
         });
-  };
+};
    
-  //  Palette with the colors
-  var palette =['00404D','FFE599'];
+//  Palette with the colors
+var palette =['00404D','FFE599'];
    
-  // name of the legend
-  var names = ['Forest','Other'];
+// name of the legend
+var names = ['Forest','Other'];
    
-  // Add color and names
-  for (var i = 0; i < 2; i++) {
+// Add color and names
+for (var i = 0; i < 2; i++) {
     legend.add(makeRow(palette[i], names[i]));
-    }  
+}  
    
-  // add legend to map
-  Map.add(legend);
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
+// add legend to map
+Map.add(legend);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+                <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/8_img3.png" width="650" alt="" title="" />
+
+<p>The RGB images.</p>
+
+<img src="img/8_img4.png" width="650" alt="" title="" />
+
+<p>The NDFI images (darker pixels have a higher NDFI value).</p>
+
+<img src="img/8_img5.png" width="650" alt="" title="" />
+
+<p>The classified images.</p>
+
+<img src="img/8_img6.png" width="650" alt="" title="" />
+
+<p>The binary change image, showing losses, gains and no change in forest cover.</p>
+
+<p>Note: this is a very basic approach to area estimation and recent literature suggests that biases due to classification errors may limit this approach. For more information on alternative approaches, read the Arévalo et al. 2020 paper and see https://area2.readthedocs.io/en/latest/overview.html</p>
 
 <hr>
 
 <p><strong>Part 2:</strong>
 Access the completed practical script <a href="https://code.earthengine.google.com/7de4528990ac9a63bb1f9dc40e8e2c70">here</a>.
 
-<pre><p><code class="javascript" id="target2">
-  /////////////////////////////////
-  ///// Set map options ///////////
-  /////////////////////////////////
+<p>For Part 2, start in a similar way by setting up your map options and loading the additional libraries. This time we will only use the CCDC utilities package.</p>
+
+<pre><p><code class="javascript" id="target9">/////////////////////////////////
+///// Set map options ///////////
+/////////////////////////////////
   
-  Map.centerObject(studyRegion, 9);
+Map.centerObject(studyRegion, 9);
   
-  /////////////////////////////////
-  ///// Load extra libraries //////
-  /////////////////////////////////
+/////////////////////////////////
+///// Load extra libraries //////
+/////////////////////////////////
   
-  // The utilities package for ccdc is the best developed of the ccdc api's
-  var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
-  // the palettes package for map outputs
-  var palettes = require('users/gena/packages:palettes');
+// The utilities package for ccdc is the best developed of the ccdc api's
+var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
+// the palettes package for map outputs
+var palettes = require('users/gena/packages:palettes');</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>Now import your CCDC image ('results') from Part 1 that were exported to your assets. There is a problem now... the CCDC image is stored as an array. This is done because before starting, we do not know the length of each variable calculated by the CCDC algorithm. Some have many segments, some hav few. This means we need to convert it to a 'regular' or 'synthetic' EE image. First create a list of the bands you are interested in, followed by the max. number of segments you are expecting. Lastly, run the buildCcdImage function, which will perform the conversion for you.</p>
+
+<pre><p><code class="javascript" id="target10">///////////////////////////////////////////
+///// Import Data /////////////////////////
+///////////////////////////////////////////
   
-  ///////////////////////////////////////////
-  ///// Import Data /////////////////////////
-  ///////////////////////////////////////////
+// Load the CCDC results back in
+var results = ee.Image("users/jdmwhite/ccdc_Rondonia_example")
   
-  // Load the CCDC results back in
-  var results = ee.Image("users/jdmwhite/ccdc_Rondonia_example")
+///////////////////////////////////////////
+///// Process /////////////////////////////
+///////////////////////////////////////////
   
-  ///////////////////////////////////////////
-  ///// Process /////////////////////////////
-  ///////////////////////////////////////////
+// Spectral band names. This list of all the bands we are interested in
+var BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2']
   
-  // There is a problem now... the CCDC image is stored as an array.
-  // This is done because before starting, we do not know the length of each variable 
-  // calculated by the CCDC algorithm. Some have many segments, some hav few.
-  // This means we need to convert it to a 'regular' EE image
+// Names of the temporal segments and the number. There are not likely to be more than 
+// 10 segments for each pixel
+var SEGS = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10"]
   
-  // Spectral band names. This list of all the bands we are interested in
-  var BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2']
-  
-  // Names of the temporal segments and the number. There are not likely to be more than 
-  // 10 segments for each pixel
-  var SEGS = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10"]
-  
-  // Obtain CCDC results in 'regular' ee.Image format
-  var ccdImage = utils.CCDC.buildCcdImage(results, SEGS.length, BANDS)
-  print('ccdImage:',ccdImage);
-  
-  // Convert the date to a format required
+// Obtain CCDC results in 'regular' ee.Image format
+var ccdImage = utils.CCDC.buildCcdImage(results, SEGS.length, BANDS)
+print('ccdImage:',ccdImage);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
+
+<p>We now run the filterMag function, which extracts three bands from the 'synthetic' image. This includes the time of the biggest break (tBreak), the total number of breaks (numTbreak) and the magnitude of the biggest break (MAG). Select a band to use (as different bands may produce different segmentation) and the number of segments to extract and ensure that your dates are correctly formatted.</p>  
+
+<pre><p><code class="javascript" id="target11">// Convert the date to a format required
   var changeStart = '1999-01-01'
   var changeEnd = '2020-01-01'
   var startParams = {inputFormat: 3, inputDate: changeStart, outputFormat: 1}
@@ -458,40 +524,43 @@ Access the completed practical script <a href="https://code.earthengine.google.c
   // This extracts information on the time of the biggest break (tBreak)
   // the magnitude of the biggest break (MAG) and the total number of breaks (numTbreak)
   var filteredChanges = utils.CCDC.filterMag(ccdImage, formattedStart, formattedEnd, 'SWIR1', SEGS)
-  print('filterChanges:',filteredChanges);
+  print('filterChanges:',filteredChanges);</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+    <script>new ClipboardJS('.btn');</script></pre>
   
-  ///////////////////////////////////////////
-  ///// Process /////////////////////////////
-  ///////////////////////////////////////////
+<p>Now visualise the different images and run a quick histogram to see the distribution of the major change dates.</p>
+
+<pre><p><code class="javascript" id="target12">///////////////////////////////////////////
+///// Visualisation ///////////////////////
+///////////////////////////////////////////
   
-  // A chosen palette
-  var change_date_palette = palettes.matplotlib.plasma[7];
-  var mag_palette = palettes.colorbrewer.PuOr[7];
-  var num_breaks_palette = palettes.matplotlib.viridis[7];
+// A chosen palette
+var change_date_palette = palettes.matplotlib.plasma[7];
+var mag_palette = palettes.colorbrewer.PuOr[7];
+var num_breaks_palette = palettes.matplotlib.viridis[7];
   
-  // The time of break
-  Map.addLayer(filteredChanges.select('tBreak'), {min: 1999, max: 2020, palette: change_date_palette}, 'Change date');
-  // The magnitude of break
-  Map.addLayer(filteredChanges.select('MAG'), {min: -0.2, max: 0.2, palette: mag_palette}, 'Magnitude');
-  // The number of breaks
-  Map.addLayer(filteredChanges.select('numTbreak'), {min: 1, max: 9, palette: num_breaks_palette}, 'Number of breaks');
+// The time of break
+Map.addLayer(filteredChanges.select('tBreak'), {min: 1999, max: 2020, palette: change_date_palette}, 'Change date');
+// The magnitude of break
+Map.addLayer(filteredChanges.select('MAG'), {min: -0.2, max: 0.2, palette: mag_palette}, 'Magnitude');
+// The number of breaks
+Map.addLayer(filteredChanges.select('numTbreak'), {min: 1, max: 9, palette: num_breaks_palette}, 'Number of breaks');
   
-  // Histogram of Change date
-  // Make sure you have your original study region defined
-  var hist = ui.Chart.image.histogram({
+// Histogram of Change date
+// Make sure you have your original study region defined
+var hist = ui.Chart.image.histogram({
     image:filteredChanges.select('tBreak'),
     region:studyRegion,
     minBucketWidth: 1,
     scale: 1000,
-  })
-  print(hist);
+})
+print(hist);
   
-  // Add in legend for aid in visualisation
+// Add in legend for aid in visualisation
   
-  ///////// tBreak
+///////// tBreak
   
-  // Styling for the legend title.
-  var LEGEND_TITLE_STYLE = {
+// Styling for the legend title.
+var LEGEND_TITLE_STYLE = {
     fontSize: '16px',
     // fontWeight: 'bold',
     stretch: 'horizontal',
@@ -499,7 +568,7 @@ Access the completed practical script <a href="https://code.earthengine.google.c
     margin: '4px',
   };
   
-  function ColorBar(palette) {
+function ColorBar(palette) {
     return ui.Thumbnail({
       image: ee.Image.pixelLonLat().select(0),
       params: {
@@ -512,30 +581,45 @@ Access the completed practical script <a href="https://code.earthengine.google.c
       },
       style: {stretch: 'horizontal', margin: '0px 8px'},
     });
-  }
+}
   
-  // Returns our labeled legend, with a color bar and three labels representing
-  // the minimum, middle, and maximum values.
-  function makeLegend() {
+// Returns our labeled legend, with a color bar and three labels representing
+// the minimum, middle, and maximum values.
+function makeLegend() {
     var labelPanel = ui.Panel(
         [ui.Label('1999', {margin: '4px 8px'}), // change min label here
         ui.Label('',{margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
         ui.Label('2020', {margin: '4px 8px'})], // change max label here
         ui.Panel.Layout.flow('horizontal'));
     return ui.Panel([ColorBar(change_date_palette.palette), labelPanel]);
-  }
+}
   
-  // Assemble the legend panel.
-  Map.add(ui.Panel(
+// Assemble the legend panel.
+Map.add(ui.Panel(
       [
         ui.Label('Change Date', LEGEND_TITLE_STYLE), makeLegend() // change title here
         ],
       ui.Panel.Layout.flow('vertical'),
-      {width: '230px', position: 'bottom-left'})); // change location here to chose where to put legend
+      {width: '230px', position: 'bottom-left'})); // change location here to chose where to put legend</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
+    <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/8_img7.png" width="650" alt="" title="" />
   
-  
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
+<p>The date of the biggest change.</p>
+
+<img src="img/8_img8.png" width="650" alt="" title="" />
+
+<p>Histogram showing the distribution of the date of biggest change.</p>
+
+<img src="img/8_img9.png" width="650" alt="" title="" />
+
+<p>The magnitude of the biggest change. Purple shows a decrease in the chosen band (SWIR1 in this case) and orange shows an increase.</p>
+
+<img src="img/8_img10.png" width="650" alt="" title="" />
+
+<p>The total number of changes (segments) recorded. Dark colours show less changes.</p>  
+
+<hr> 
 
 <p><strong>There is no assignment for this practical</strong>
 

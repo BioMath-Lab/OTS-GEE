@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="UTF-8">
 <link rel="stylesheet" href="../scripts/style.css" />
@@ -19,214 +18,329 @@
 </div>
 
 <div id="content">
-  <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
-  <p><strong>Practical 7: Supervised learning: Landcover classification</strong>
-  <br>
-  <hr>
-  <p>Authored by Geethen Singh</p>
-  <p>Access the complete practical, part 1 script <a href="https://code.earthengine.google.com/c74c83c72042edb09daaea7d5becc8dd">here</a></p>
-  <p><strong>Learning Objectives</strong></p>
-  <p>By the end of this practical you should be able to:</p>
-  <ol>
-  <li>Describe the workflow for a typical supervised classification workflow.</li>
-  <li>Create reference data for classes of interest.</li>
-  <li>Fit a random forest model on spectral variables to map the distribution of water, built-up areas, tree-cover, and other (neither of the three classes).</li>
-  <li>Evaluate model accuracy</li>
-  </ol>
-  <p><strong>The end product</strong></p>
-  <p><img src="img/7_img1.png" alt=""></p>
-  <p><strong>Figure 1:</strong> The distribution of water, built-up areas, tree-cover, and other (neither of the three classes) pixels at a 30 m resolution for a heterogeneous coastal area in the Western Cape, South Africa based on Landsat-8 and Sentinel-1 radar imagery.</p>
-  <hr>
-  <p><strong>Step 1: Import data</strong></p>
-  <p>For this practical, you will be required to import Landsat-8 surface reflectance and Sentinel-1 Ground Range Detected imagery (GRD) data. Rename these as l8sr and s1 respectively. You have been provided with a reference points dataset (four feature collections within the imports section). However, you have the functionality within GEE to create your own reference points for each of the four classes of interest i.e. water, built-up areas, tree-cover, and other.</p>
-  <hr>
-  <p><strong>Alternatively, Create your own reference points</strong></p>
-  <p>In the scenario that you are creating your own reference data points, you can use the following steps. Click on the add Markers button. Thereafter, hover over the geometry imports section and click on the cogwheel besides the geometry and set up the various options by changing the ‘Name’ to the class of interest, changing the ‘import as’ option to a feature collection, and adding a property called label with a unique integer for each class. Once set, click ok and go to the map area and add reference points for the applicable class in appropriate locations. ‘Appropriate locations’ is dependent on the spatial resolution of your imagery to be classified and the time period of interest. For instance, when working with Landsat-8, 30 m imagery, it is ideal if you add markers for areas that are dominated by the class of interest. A higher resolution base map together with an RGB or FCI can be highly useful for guiding your reference point selection. Note, use a base map that overlaps with the period of concern.</p>
-  <p><img src="img/7_img2.png" alt=""></p>
-  <p><strong>Figure 2:</strong> An example of setting up a feature collection for reference point collection of a class named water. Note, the labels for the land cover classes need to be zero-indexed.</p>
-  <hr>
-  <p><strong>Step 2: Data Preparation - Filtering</strong></p>
-  <p>Create a Landsat-8 surface reflectance composite that covers the AOI (shown by the provided geometry) for the period of 1 June 2016 to 30th September 2016, add ndvi and mndwi bands. Lastly, compute the median image, taking into consideration the GEE scaling factor and clipping to the extent of geometry.</p>
+<h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
+<p><strong>Practical 7: Fire frequency in the Kruger National Park, South Africa</strong>
+<br>by Sandra MacFadyen @ <a href="https://www0.sun.ac.za/biomath/">https://www0.sun.ac.za/biomath</a>
+<br>Access the practical script <a href="https://code.earthengine.google.com/fefc78b6f9ed2e66bbb15549d2555829?noload=true">here</a>.
+<br>Also please download this shapefile delineating <a href="https://drive.google.com/file/d/1ymTj9v89FphncmxDsyrEV9ln7jTxApPQ/view?usp=sharing">regional boundaries</a> in Kruger.
+As well as this raster file representing <a href="https://drive.google.com/file/d/18sHZoXQ7Yrzd0gQWEBMl9W7ISvhpe25W/view?usp=sharing">distance to main rivers</a>.
+<br><br>
+<strong>Learning Objectives</strong>
+<br>By the end of this practical you should be able to:
+<br>
+<ol>
+<li>Import your own local data as assets (.shp and .tif)
+<li>Access terrain model data from SRTM</li>
+<li>Access monthly burn scar data</li>
+<li>Generate a hillshade using SRTM data</li>
+<li>Explore long-term patterns of fire frequency</li>
+<li>Build an animation and output for use in, for example, PowerPoint presentations</li>
+<li>Visualise relationships using scatterplots</li>
+</ol>
+<hr>
+<p><strong>Introduction</strong>
+<br>Fire is an important driver of landscape pattern, as different fire regimes directly affect biomass production, composition and structure of vegetation. 
+Indirectly, and together with other landscape features like geology, rainfall and topography, fire also influences animal distribution patterns. 
+In savanna systems, interactions between herbivory, fire frequency, fire intensity and season can alter tree:grass ratios and system states. 
+For example, in the Kruger National Park (Kruger) landscapes that are burnt frequently by high intensity fires generally have less woody cover than those 
+burnt less frequently, at low intensities. Fire regime can also influence vegetation composition, where fire adapted species may dominate in frequently burnt areas, 
+while those areas less frequently burnt may provide important refugia for more fire sensitive species (<a href="https://onlinelibrary.wiley.com/doi/full/10.1111/j.1600-0587.2012.07555.x" target="_blank">Smit et al. 2013</a>). 
+Fire is therefore an important component for biodiversity conservation planning but how do we find information about fire frequencies, 
+intensities and seasons for our areas of interest if we haven’t monitored it directly? 
+ GEE has a number of different <a href="https://developers.google.com/earth-engine/datasets/tags/fire" target="_blank">datasets tagged &quot;fire&quot;</a>. 
+We'll just be looking at one in this practical but I encourage you to explore the others in your own time. Let’s get started……</p>
+<hr>
+<p><strong>Data import</strong>
+<br>In addition to datasets available on Google Earth Engine, in this practical we will learn how to import your own data (like shapefiles or raster grids)
+into your workspace from your local hard-drive by uploading them as new assets (Fig. 1).</p>
+
+<pre><p><code class="javascript" id="target1">var dem = ee.Image("USGS/SRTMGL1_003");
+var FireCCI = ee.ImageCollection('ESA/CCI/FireCCI/5_1');</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
   
-  <pre><p><code class="language-js" id="target1">var filtered = l8sr
-  .filterBounds(geometry)
-  .filterDate(startDate, endDate)
-  .map(function(image){
-  var ndvi = image.normalizedDifference(['B5', 'B4']).rename(['ndvi']);
-  var mndwi = image.normalizedDifference(['B3', 'B7']).rename(['mndwi']);
-  return image.select('B.*').addBands([ndvi,mndwi]);
-  }).median()
-  .divide(10000)
-  .clip(geometry);
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
+<p>The first dataset, <a href="https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003">SRTM30</a>, is a 30m Digital Elevation Model (DEM) 
+from the Shuttle Radar Topography Mission (SRTM). The second, <a href="https://developers.google.com/earth-engine/datasets/catalog/ESA_CCI_FireCCI_5_1">FireCCI51</a>, 
+is a Fire_cci Burned Area pixel product version 5.1 from MODIS. 
+Figure 1 below, describes how to import the boundary shapefile for the Kruger National Park (Kruger) from files stored locally on your hard-drive. 
+The process is similar to import image files (e.g. GeoTIFF or TFRecords), which we'll go through in class.
+Download and save the required files from <a href="https://drive.google.com/file/d/1omD5vPk4LMQSnC2BHJCg6GlnmpzBsFQG/view?usp=sharing">here</a>.</p>
+<p><img src="img/5_img2.png" alt="" title=""/>
+<br><strong>Figure 1:</strong> Process to upload a shapefile into GEE as a new assest imported into the script as a FeatureColection</p>
+<hr>
+<p><strong>Filtering data</strong>
+<br>First define your variables for the temporal and spatial windows of interest. 
+We will use these variables to filter our data before processing.</p>
+
+<pre><p><code class="javascript" id="target2">// Set your start and end dates to filter by
+var startDate = ee.Date.fromYMD(2001,1,1);
+var endDate = ee.Date.fromYMD(2018,12,31);
+var years = ee.List.sequence(2001, 2018);
+// Or do this later from actual variable i.e. var years = ee.List(fire.aggregate_array('year')).distinct().sort();
+
+// Convert your imported "Table" asset to a geometry
+// You'll need it later for clipping ImageCollections
+var zones_geo = zones.geometry();
+
+// Clip the DEM to Kruger
+var srtm = dem.clipToCollection(zones);
+// or var dem = dem.clip(knp_aoi)
+
+// Select appropriate bands, filter by dates, clip by AOI, 
+// set year and yrmnth properties
+var fire = FireCCI
+    .select(['BurnDate','ConfidenceLevel'])
+    .filterDate(startDate, endDate)
+    .map(function(img) { // Use function to add year as property to each image
+      return img
+              .clip(zones_geo)
+              .set('year', ee.Image(img).date().get('year'))
+              .set('yrmnth',ee.Date.parse('YYYY_MM_DD', (img.get('system:index'))).format('YYYY_MM'));
+    });</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+<hr>
+<p><strong>Processing</strong>
+<br>Now remove all burn scars from the fire dataset that have a confidence interval of less than 50%.</p> 
+ 
+<pre><p><code class="javascript" id="target3">// Remove all fires with less than 50% confidence
+var confMask = fire.map(function(img) {
+  var conf = img.select('ConfidenceLevel');
+  var level = conf.gt(50);
+  return img
+      .updateMask(level)
+      .select('BurnDate') //return only 'BurnDate' band
+      .set('year', ee.Image(img).date().get('year'))
+      .set('yrmnth', ee.Image(img).get('yrmnth'));
+});</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<hr>
+<p><strong>Summarise results</strong>
+<br>Run the function and summarise the burn scars by the frequency areas are burnt 
+in Kruger annually from 2001 until 2018.
+
+<pre><p><code class="javascript" id="target5">// Count the distinct DOY the occurrences of those fires AND
+// Set the band property to year
+var fireCNT = ee.ImageCollection.fromImages(years.map(function(year) {
+  return confMask
+    .filterMetadata('year', 'equals', year) // Filter image collection by year
+    .select('BurnDate').reduce(ee.Reducer.countDistinct()) // Reduce image collection by counting distinct doy
+    .set('year', year);
+}));
+
+// Concatenate the DOY per month into a new image collection
+var fireDOY = ee.ImageCollection.fromImages(years.map(function(year) {
+  return confMask
+    .filterMetadata('year', 'equals', year) // Filter image collection by year
+    .select('BurnDate').reduce(ee.Reducer.firstNonNull())
+    .set('year', year);
+}));</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+
+<hr>
+<p><strong>Visualise results on a map</strong>
+<br>To visualise the long-term summaries of your results, first setup your map elements as you've done in previous practicals, then add the layers to your map.
+We can do the park-wide summaries "on-the-fly".
+<pre><p><code class="javascript" id="target5b">// Define a legend for fire frequency
+// Light colours are areas that burn less frequently, 
+// dark colours are areas that burn often
+var visCnt = {
+    min:2, max:12, // min:2, max:27 OR 1st StdDev
+    palette:['eef5b7','99f74f','4ff7b0','4fc2f7','3940db',
+            '7239db','db39db','db395c','7c1229']};
+
+// // Define legend parameters for unique DOY
+// // Light colours are earlier in the year, dark colours are later
+var visDOY = {
+    min:1, max:366, 
+    palette:['008000','00b050','92d050','c9ee12','ffd966','bf8f00',
+    'bf8f00','ffd966','c9ee12','92d050','00b050','008000']};
+    
+// Add overall results to map
+Map.centerObject(zones, 7);
+// Calculate overall mode "on-the-fly" and add to KNP map
+Map.addLayer(confMask.mode(), visDOY, 'Most frequently burnt DOY', true, 0.8);
+// Calculate overall fire frequencies "on-the-fly" and add to KNP map
+Map.addLayer(fireCNT.sum(), visCnt, 'Fire frequency', false, 0.8);
+Map.addLayer(zones,{color: 'grey'}, 'Kruger Park', false, 0.8);</code><button class="btn" id="copy-button" data-clipboard-target="#target5b">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<p><img src="img/5_img4.png" width="650" alt="" title=""/></p>
+<p><strong>Figure 2:</strong> Map with layers indicating the most frequently burnt doy-of-year (doy) and the fire frequency in Kruger from 2001 to 2018</p>
+<hr>
+
+<p><strong>Hillshade and Animation</strong>
+<br>We can create a hillshade from the DEM using the built-in ee.Terrain.hillshade function. 
+Unfortunately, we can't add text to your animation from the Code Editor (at least none that I'm aware of) but there are a few ways 
+you can do this after saving your .gif outside of GEE.
+For example, using free image editor software like <a href="https://www.gimp.org/">GIMP</a>; online converters like <a href="https://ezgif.com/add-text" target="_blank">Ezgif</a>; 
+the <a href="https://geemap.org/">geemap</a> Python API; or even through <a href="https://cran.r-project.org/">R</a> with <a href="https://r-spatial.github.io/rgee/">rgee</a>.
+
+<pre><p><code class="javascript" id="target8">// Calculate hillshading
+var hillshade = ee.Terrain.hillshade(dem);
+// print('Check hillshade', hillshade);
+
+// Define the hillshade background legend parameters
+var srtmParams = {
+  min: 170, // Elevation min 100
+  max: 187, // Elevation max 840
+  gamma: 1,
+};
+
+// // Check visual parameters work for your AOI
+// Map.addLayer(hillshade, srtmParams, 'Hillshade', true, 0.8);
+
+// Set the clipped SRTM image as background
+var srtmVis = hillshade.visualize(srtmParams);
+// -------------------------------------------------------------------------
+
+// Define GIF visualization parameters
+var gifParams = {
+  'region': zones_geo,
+  'dimensions': 500,
+  'crs': 'EPSG:3857', // Check projection
+  'framesPerSecond': 1
+};
+
+// Create RGB visualization images for use as animation frames.
+var srtmFires = fireDOY.map(function(img) {
+  return srtmVis
+        .paint(zones, 'grey', 1) // Add zones boundary
+        .blend(img.visualize(visDOY)); // Blend hillshade with zones and clip
+});
+// print("check srtmFires", srtmFires);
+
+// Print the GIF URL to the console
+var myGIF = srtmFires.getVideoThumbURL(gifParams);
+print(myGIF);
+
+// Render the GIF animation in the console
+print(ui.Thumbnail({
+  image: srtmFires,
+  params: gifParams,
+  style: {
+    position: 'bottom-right',
+    width: '180px'
+  }}));
   
-  <p>Similarly, filter the Sentinel-1 data to the AOI for the period of June to September 2016 as above. In addition, filter the s1 image collection to those images that have captured in Interferometric Wide (IW) mode and contain Vertical Transmit and Vertical Receive (VV) and Vertical Transmit and Horizontal Receive polarised bands. Lastly, for each image, select all bands that start with a V and reduce the resulting images to the mean image.</p>
-  <p>For more information on radar, check out:</p>
-  <ul>
-  <li>https://www.servirglobal.net/Global/Articles/Article/2674/sar-handbook-comprehensive-methodologies-for-forest-monitoring-and-biomass-estimation</li>
-  <li>https://earthdata.nasa.gov/learn/backgrounders/what-is-sar</li>
-  <li>https://developers.google.com/earth-engine/tutorials/community/sar-basics</li>
-  </ul>
-  
-  <pre><p><code class="language-js" id = "target2">var s1 = s1.filterBounds(geometry)
-  .filterDate(startDate, endDate)
-  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
-  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
-  .filter(ee.Filter.eq('instrumentMode', 'IW'))
-  .select(&quot;V.&quot;)
-  .mean();
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>Create a final composite image with the bands of both the Landsat-8 composite and Sentinel-1 composite.</p>
-  <pre><p><code class="language-js" id = "target3">var composite = filtered.addBands(s1).aside(print).clip(geometry);
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  <hr>
-  
-  <p><strong>Step 2: Data preparation continued- preparing the train and test datasets</strong></p>
-  <p>The next step is to split this data into a training and testing partition. The training partition is used to fit the model whilst the test data is used to evaluate the accuracy of the model. Here, we use a split of 80% train data and 20% test data. We set the seed to ensure we end up with roughly the same train and test partition when re-running the model.</p>
-  <pre><p><code class="language-js" id= "target4">//Stratified random sampling for each class
-  var new_table = water.randomColumn({seed: 1});
-  var wtraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var wtest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  var new_table = tree_cover.randomColumn({seed: 1});
-  var tctraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var tctest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  var new_table = built_up.randomColumn({seed: 1});
-  var butraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var butest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  var new_table = other.randomColumn({seed: 1});
-  var otraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var otest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  //Combine land-cover reference points for training partition
-  var training = wtraining.merge(tctraining).merge(butraining).merge(otraining).aside(print, 'training partition');
-  var test = wtraining.merge(tctest).merge(butest).merge(otest).aside(print, 'test partition');
-  var points = training.merge(test).aside(print,'all points');
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>Depending on your goal or more specifically, the area that you intend on generalising across determines which is the most suitable way for you to do your sampling. Since we are trying to create our model for a small region, stratified random sampling will suffice. However, if you were trying to generalise across large areas then it is more suitable to use a spatially constrained cross validation technique. This will result in more accurate estimates of accuracy.</p>
-  <hr>
-  <p><strong>Step 2: Data preparation continued -linking the two datasets, extracting the spectral signatures</strong></p>
-  <p>At this point, we have our response (reference points) and explanatory variables (Landsat-8 and Sentinel-1 data) prepared. We can now move on to extracting the spectral signatures at each of the points. Note, the ‘tileScale’ argument may be useful when working with large computations that fail due to computation errors.</p>
-  
-  <pre><p><code class="language-js" id="target5">var Features = composite.sampleRegions({
-  collection: training,
-  properties: ['label'],
-  scale: 30,
-  tileScale:16
-  });
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <hr>
-  <p><strong>Step 3: Model fitting on training data (ofcourse)</strong></p>
-  <p>We fit a random forest model on the extracted spectral data for the training data partition. We choose a value of 100 for the number of trees since this is the defualt value used in pythons scikit-learn package. Choosing a larger value would increase the number of decision trees and increase the likelihood that our model overfits to our training data. Simultaneously, selecting too few trees may result in underfitting to our data.</p>
-  <p>if you are interested in using a data-riven approach to determine the optimum number of trees for example- check out this hyperparameter tuning script within GEE <a href="https://code.earthengine.google.com/1508042eeba0aef8cc17e9907de71a5a?noload=true">link</a></p>
-  
-  <pre><p><code class="language-js" id="target6">var trainedClassifier = ee.Classifier.smileRandomForest(100)
-  .train({
-  features: Features,
-  classProperty: 'label',
-  inputProperties: composite.bandNames()
-  });
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <hr>
-  
-  <p><strong>Step 4: Inference for entire AOI</strong></p>
-  <pre><code class="language-js">var classified = composite.classify(trainedClassifier);
-  </code></pre>
-  
-  <hr>
-  <p><strong>Step 5: Model evaluation on train and test set</strong></p>
-  <p>The training accuracy largely overestimates model accuracy since this data has been used to train the model. We, therefore, use a test set (data unseen by the model) to get a more reliable estimate of model accuracy.</p>
-  
-  <pre><p><code class="language-js" id= "target7">//Train accuracy
-  var trainAccuracy = trainedClassifier.confusionMatrix().accuracy();
-  print('Train Accuracy', trainAccuracy);
-  
-  //Test accuracy
-  var test = composite.sampleRegions({
-  collection: test,
-  properties: ['label'],
-  scale: 30,
-  tileScale: 16
-  });
-  var Test = test.classify(trainedClassifier);
-  print('ConfusionMatrix', Test.errorMatrix('label', 'classification'));
-  print('TestAccuracy', Test.errorMatrix('label', 'classification').accuracy());
-  print('Kappa Coefficient', Test.errorMatrix('label', 'classification').kappa());
-  print('Producers Accuracy', Test.errorMatrix('label', 'classification').producersAccuracy());
-  print('Users Accuracy', Test.errorMatrix('label', 'classification').consumersAccuracy());
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>For more information on acuuracy metrics, check out these medium posts 
-    <ol>
-      <li> <a href="https://towardsdatascience.com/the-5-classification-evaluation-metrics-you-must-know-aa97784ff226">post 1</a></li>
-      <li> <a href ="https://gis.humboldt.edu/OLM/Courses/GSP_216_Online/lesson6-2/metrics.html#:~:text=The%20user%20and%20producer%20accuracy,the%20user's%20accuracy%20was%2071%25.&text=By%20analyzing%20the%20various%20accuracy,the%20analysis%20and%20classification%20results.">post 2</a></li>
-    <li>The use of kappa coefficient is not <a href="https://www.sciencedirect.com/science/article/pii/S0034425719306509?casa_token=bs5DJ6Q1IAEAAAAA:4mnFyd6kC57olnsFDoWRoN-d3cvnId583g4AnLe4Bkz8-RlW0tjXSEKMgN0wZNrh9wModyfsd6A">encouraged</a></li>  
-    </ol>
-  </p> 
-  
-  <hr>
-  <p><strong>Visualisation</strong></p>
-  <p>Visualising the RGB image, reference points, and classified image</p>
-  
-  <pre><p><code class="language-js" id="target8">Map.centerObject(points.geometry().bounds(), 13);
-  Map.addLayer(composite,rgb_vp, 'Landsat-8 RGB');
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <pre><p><code class="language-js" id="target9">showTrainingData();
-  function showTrainingData(){
-  var colours = ee.List([&quot;darkblue&quot;,&quot;darkgreen&quot;,&quot;yellow&quot;, &quot;orange&quot;]);
-  var lc_type = ee.List([&quot;water&quot;, &quot;tree cover&quot;,&quot;built-up&quot;,&quot;other&quot;]);
-  var lc_label = ee.List([0, 1, 2, 3]);
-  var lc_points = ee.FeatureCollection(
-  lc_type.map(function(lc){
-  var colour = colours.get(lc_type.indexOf(lc));
-  return points.filterMetadata(&quot;label&quot;, &quot;equals&quot;, lc_type.indexOf(lc).add(1))
-  .map(function(point){
-  return point.set('style', {color: colour, pointShape: &quot;diamond&quot;, pointSize: 3, width: 2, fillColor: &quot;00000000&quot;});
-  });
-  })).flatten();
-  
-  Map.addLayer(classified, {min: 0, max: 3, palette: [&quot;darkblue&quot;,&quot;darkgreen&quot;,&quot;yellow&quot;, &quot;orange&quot;]}, 'Classified image', false);
-  Map.addLayer(lc_points.style({styleProperty: &quot;style&quot;}), {}, 'TrainingPoints', false);
-  }
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>If you are interested in Object Based Image Analysis, check out <a href="https://code.earthengine.google.com/7f0f1f333ac8cdad33a8a531ed1cf186">this script</a>. Since objects are used, some spatial context is used, performs slighly better in terms of accuracy and removes salt and pepper effect at the expense of computation.</p>
-  <p>If you are interested in Convolutional Neural Networks, check out this <a href="https://developers.google.com/earth-engine/guides/tf_examples">link</a></p>
-  <hr>
-  <p><strong>Practical 9, part 2: Supervised learning 2: Improving land cover classification.</strong></p>
-  <p>Access the complete practical, part 2 script <a href="https://code.earthengine.google.com/13481e041280a29ee0fcda5b5eaf722c?noload=true">here</a></p>
-  <p><strong>Learning Objectives</strong></p>
-  <p>By the end of this practical you should be able to:</p>
-  <ol>
-  <li>Understand the role and importance of high-quality training data.</li>
-  <li>Use an objective approach (this is experimental) to improve the selection of training data.</li>
-  <li>Determine the area of applicability for a model.</li>
-  </ol>
-  <p><strong>The end product</strong></p>
-  <p><img src="img/7_img3.png" alt=""></p>
-  <p><strong>Figure 1:</strong> The area of applicability for a model that discriminated water and non-water pixels at a 10 m resolution for a heterogeneous area near Hartbeespoort Dam, South Africa based on Sentinel-2 imagery.</p>
-  <p>The area of applicability concept is based on an experimental concept still under review and has been implemented based on the pre-print version available <a href="https://arxiv.org/abs/2005.07939">here</a>.</p>
-  <p>Reference</p>
-  <p>Meyer, H. and Pebesma, E., 2020. Predicting into unknown space? Estimating the area of applicability of spatial prediction models. arXiv preprint arXiv:2005.07939.</p>
-  <p>Do you have any feedback for this practical? Please complete this quick (2-5 min) survey <a href="https://forms.gle/HKgTJ4twMahg5nbh8">here</a>.</p>
-  
-  </div>
+// Or create a video thumbnail and add it to the map.
+var thumb = ui.Thumbnail({
+  // Specifying a collection for "image" animates the sequence of images.
+  image: srtmFires,
+  params: gifParams,
+  style: {
+    position: 'bottom-right',
+    width: '160px'
+  }});
+Map.add(thumb);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<p><img src="img/5_img5c.gif" width="200" alt="" title=""/></p>
+<p><strong>Figure 3:</strong> Animation of days fires occurred in Kruger from 2001 to 2018. 
+Light colours represent fires that happened earlier in the year, while dark colours are those that burnt in later months</p>
+<p>To export the animation, simply right mouse-click and select Save Image As… to save the animation locally as a .GIF file to your hard-drive.</p>
+<hr>
+
+<p><strong>Charting</strong>
+<br>To plot these results, first define your chart parameters (e.g. title and axis labels), then create the different charts, 
+incorporating these pre-defined chart parameters and print it to the console as follows:
+
+<pre><p><code class="javascript" id="target6">// Monthly fire frequencies per year for the whole Park
+var opt_cntFireMonth = {
+  title: 'Monthly fire frequencies: Kruger National Park 2001 to 2018',
+  pointSize: 3,
+  hAxis: {title: 'Year Month'},
+  vAxis: {title: 'Number of fires'},
+};
+
+// Plot day count of monthly fires
+var cntFireMonth_chart = ui.Chart.image.series({ // ui.Chart.image.byRegion
+  imageCollection: confMask.select('BurnDate'), // <------ CHANGED to confMask
+  xProperty: 'yrmnth',
+  region: zones_geo,
+  reducer: ee.Reducer.countDistinct(),
+  scale: 1000 // <------ I CHANGED TO SCALE TO 1KM, TO SEE IF THAT HELPS WITH TIME-OUT ISSUES
+}).setOptions(opt_cntFireMonth).setChartType('LineChart');
+print(cntFireMonth_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+
+<p><img src="img/5_img3.png" width="650" alt="" title=""/></p>
+<p><strong>Figure 4:</strong> Line chart the number of days a fire occured in Kruger from 2001 to 2018</p>
+
+<pre><p><code class="javascript" id="target7">// Annual fire frequencies per region
+// Count for individual image and return annual sum unique doy
+// Again, pre-define the chart parameters
+var opt_fireYr = {
+  title: 'Count number of Fires per region',
+  hAxis: {title: 'Time'},
+  vAxis: {title: 'Fire Frequency'},
+  colors: ['1d6b99', '39a8a7', '0f8755', '76b349']
+};
+
+// create a chart with a reducer
+var fireYr_chart = ui.Chart.image.seriesByRegion({
+  imageCollection: fireCNT, 
+  regions: zones, 
+  reducer: ee.Reducer.sum(), 
+  band: 'BurnDate_count', 
+  scale: 1000, 
+  xProperty: 'year', 
+  seriesProperty: 'region'})
+    .setChartType('ColumnChart')
+    .setOptions(opt_fireYr);
+print(fireYr_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<p><img src="img/5_img5.png" width="650" alt="" title=""/></p>
+<p><strong>Figure 5:</strong> Number of fires by region from 2001 to 2018</p>
+
+<hr>
+
+<p><strong>More on charting: Visualising relationships</strong>
+<br>An easy way to visualise the relationship between variables is using a scatterplot. 
+For example, using your own point data intersected with bioclimatic variables, or between two images as follows:
+
+<pre><p><code class="javascript" id="target9">// Add the two images together as xxx
+// Rename the bands at the same time
+var rivFire = river.addBands(fireCNT.sum()).rename(['river','fire']);
+print('Check rivFire', rivFire);
+
+// Get a sample sample of points across
+var sample = rivFire.sampleRegions(zones_geo, null, 5000);//408453 vs 102046
+// Or sample N points = geometry features to plot
+// var sample = rivFire.sample({ region: zones_geo, scale: 30, numPixels: 4000, geometries: true}); 
+Map.addLayer(sample.style({ color: 'blue', pointSize: 1 }), {}, 'samples');
+// print('Check sample size', sample.size());
+// print('Check sample info', sample);
+
+// Plot scatterplot from sample intersects
+var chart = ui.Chart.feature.byFeature(sample, 'fire', 'river')
+    .setChartType('ScatterChart')
+    .setOptions({pointSize: 2, pointColor: 'blue', 
+              titleX: 'Fire', 
+              titleY: 'Distance to River',
+              trendlines: { 0: {showR2: true, visibleInLegend: true} , 
+                    1: {showR2: true, visibleInLegend: true}}
+    });
+print(chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+<hr>
+
+<p><strong>Practical Assignment #5</strong>
+<br>Please complete the practical exercise below and share your script with us, as you have done in previous practicals. 
+This time, don't forget to also share your local assets with use (see figure below for help).
+!NB! Remember to add the prac number in the header please.
+<p><img src="img/5_img6.png" width="400" alt="" title=""/></p>
+<pre><p><code class="javascript" id="target10">// Upload a local asset, a shapefile boundary for example, and share the assest 
+// before importing it as an import entry into your script
+// Import and filter a GEE dataset (e.g. FireCCI) of your choice
+// Generate an animation (with or without a hillshade)
+// Finally chart the results and group-by a region filed (hint: see lines 227-248)</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+<script>new ClipboardJS('.btn');</script></p></pre>
+
+<p>If you're feeling adventurous and would like to try the scatterplot example with Tree Cover by 
+<a href="https://koedoe.co.za/index.php/koedoe/article/view/1621">Urban et al (2020)</a>, you can download the .tif version of the 
+percentage tree cover for Kruger <a href="https://drive.google.com/file/d/1ERKSwrdjdqYkGqEHJSTwMs35OQKOtbjX/view?usp=sharing">here</a>.
+<hr>
+
+<p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1AShA7pBEcRrUn7a0pA8fEq8qSismI5l2CIOk-Wij-Cw/viewform" target="_blank">quick (2 min) survey.</a> Thank you.</p>
+</div>
 
 <div id="sidebar">
 <h3>MENU</h3>
@@ -241,17 +355,23 @@
 </nav>
 <nav class="drop-down-menu">
 <input type="checkbox" class="activate" id="accordion-2" name="accordion-2">
-<label for="accordion-2" class="menu-title">> COURSE 2021</label>
+<label for="accordion-2" class="menu-title">> COURSE APR 2021</label>
+<div class="drop-down">
+<li><a href="">Check again later</a></li>
+</div>
+</nav>
+<nav class="drop-down-menu">
+<input type="checkbox" class="activate" id="accordion-3" name="accordion-3">
+<label for="accordion-3" class="menu-title">> COURSE NOV 2021</label>
 <div class="drop-down">
 <li><a href="1_prac.html">[Prac1] Getting started</a></li>
 <li><a href="2_prac.html">[Prac2] Spectral indices</a></li>
 <li><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
 <li><a href="4_prac.html">[Prac4] Interactive App</a></li>
-<li><a href="5_prac.html">[Prac5] Time series-Fire</a></li>
-<li><a href="6_prac.html">[Prac6] Species patterns</a></li>
-<li class="selected"><a href="7_prac.html">[Prac7] Landcover class</a></li>
-<li><a href="8_prac.html">[Prac8] Change analysis</a></li>
-<li><a href="9_prac.html">[Prac9] Your own data</a></li>
+<li><a href="5_prac.html">[Prac5] Change analysis</a></li>
+<li class="selected"><a href="6_prac.html">[Prac6] Landcover class</a></li>
+<li><a href="7_prac.html">[Prac7] Time series-Fire</a></li>
+<li><a href="8_prac.html">[Prac8] Species patterns</a></li>
 </div>
 </nav>
 <li><a href="10_contact.html">CONTACT US</a></li>
@@ -263,7 +383,7 @@
 </div>
 
 <div style="clear: both;"> </div>
-<ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>
+<ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>	
 
 <div id="footer">
 <p>&copy; Copyright 2021 BioGIS | Designed by <a href="http://www.biogis.co.za" target="_blank">BioGIS</a></p>
@@ -285,5 +405,6 @@
         console.log(e);
       });
 </script>
+
 </body>
 </html>

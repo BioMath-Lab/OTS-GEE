@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <link rel="stylesheet" href="../scripts/style.css" />
@@ -19,327 +20,619 @@
 
 <div id="content">
 <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
-<p><strong>Practical 5: Fire frequency in the Kruger National Park, South Africa</strong>
-<br>by Sandra MacFadyen @ <a href="https://www0.sun.ac.za/biomath/">https://www0.sun.ac.za/biomath</a>
-<br>Access the practical script <a href="https://code.earthengine.google.com/fefc78b6f9ed2e66bbb15549d2555829?noload=true">here</a>.
-<br>Also please download this shapefile delineating <a href="https://drive.google.com/file/d/1ymTj9v89FphncmxDsyrEV9ln7jTxApPQ/view?usp=sharing">regional boundaries</a> in Kruger.
-As well as this raster file representing <a href="https://drive.google.com/file/d/18sHZoXQ7Yrzd0gQWEBMl9W7ISvhpe25W/view?usp=sharing">distance to main rivers</a>.
-<br><br>
+<p><strong>Practical 5: Continuous change detection & classification</strong>
+<br>
+<br>
 <strong>Learning Objectives</strong>
-<br>By the end of this practical you should be able to:
+By the end of this practical you should be able to:
 <br>
 <ol>
-<li>Import your own local data as assets (.shp and .tif)
-<li>Access terrain model data from SRTM</li>
-<li>Access monthly burn scar data</li>
-<li>Generate a hillshade using SRTM data</li>
-<li>Explore long-term patterns of fire frequency</li>
-<li>Build an animation and output for use in, for example, PowerPoint presentations</li>
-<li>Visualise relationships using scatterplots</li>
+<li>Understand the value of continuity in change detection</li>
+<li>Understand and implement continuous change detection</li>
+<li>Classify a region using bands and regression variables</li>
+<li>Obtain ‘regular’ image and change information</li>
 </ol>
 <hr>
+
+Access the slides here: bit.ly/2R8U5wO
+
 <p><strong>Introduction</strong>
-<br>Fire is an important driver of landscape pattern, as different fire regimes directly affect biomass production, composition and structure of vegetation. 
-Indirectly, and together with other landscape features like geology, rainfall and topography, fire also influences animal distribution patterns. 
-In savanna systems, interactions between herbivory, fire frequency, fire intensity and season can alter tree:grass ratios and system states. 
-For example, in the Kruger National Park (Kruger) landscapes that are burnt frequently by high intensity fires generally have less woody cover than those 
-burnt less frequently, at low intensities. Fire regime can also influence vegetation composition, where fire adapted species may dominate in frequently burnt areas, 
-while those areas less frequently burnt may provide important refugia for more fire sensitive species (<a href="https://onlinelibrary.wiley.com/doi/full/10.1111/j.1600-0587.2012.07555.x" target="_blank">Smit et al. 2013</a>). 
-Fire is therefore an important component for biodiversity conservation planning but how do we find information about fire frequencies, 
-intensities and seasons for our areas of interest if we haven’t monitored it directly? 
- GEE has a number of different <a href="https://developers.google.com/earth-engine/datasets/tags/fire" target="_blank">datasets tagged &quot;fire&quot;</a>. 
-We'll just be looking at one in this practical but I encourage you to explore the others in your own time. Let’s get started……</p>
-<hr>
-<p><strong>Data import</strong>
-<br>In addition to datasets available on Google Earth Engine, in this practical we will learn how to import your own data (like shapefiles or raster grids)
-into your workspace from your local hard-drive by uploading them as new assets (Fig. 1).</p>
 
-<pre><p><code class="javascript" id="target1">var dem = ee.Image("USGS/SRTMGL1_003");
-var FireCCI = ee.ImageCollection('ESA/CCI/FireCCI/5_1');</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
+<p>For many land cover change analyses, particularly in forest detection, we have previously relied on annual (or longer interval) land classifications. This includes datasets such as <a href="https://developers.google.com/earth-engine/tutorials/tutorial_forest_02">Hansen Global Forest Change</a> or <a href="https://developers.google.com/earth-engine/datasets/catalog/NASA_MEASURES_GFCC_TC_v3">Global Forest Cover Change</a>. These data are immensely valuable and do a good job at compensating for difficulties in monitoring forests in regions with lots of clouds. However, there are limitations to understanding land cover change, when we only have a few observation epochs. This is where Continuous Change Detection and Classification comes in. Using all available satellite observations, the CCDC algorithm provides a more comprehensive approach to classifying images and detecting change. This practical gives an overview of this.</p>
+
+<br>
+Some useful resources to better understand the CCDC approach and implementation in GEE can be found below:
+<ol>
+<li><a href="https://doi.org/10.1016/j.rse.2005.07.013">Souza Jr. et al 2005</a></li>
+<li><a href="http://dx.doi.org/10.1016/j.rse.2014.01.011">Zhu & Woodcock 2014</a></li>
+<li><a href="https://doi.org/10.3389/fclim.2020.576740">Arévalo et al. 2020</a></li>
+<li><a href="https://gee-ccdc-tools.readthedocs.io/en/latest">Documentation for CCDC in GEE</a></li>
+<li><a href="https://parevalo-bu.users.earthengine.app">CCDC in GEE Apps</a></li>
+</ol>
+
+<hr>
+<br> 
+The analysis is broken into two parts. Part 1 addresses applying a classification to any time point in your ImageCollection. Part 2 addresses exporting variables for further analysis.
+
+Part 1 relies on two external libraries and shows aspects of the required workflow. I recommend trying the full workflow that relies on the excellent CCDC utilities package alone when running CCDC with your own (<a href="https://gee-ccdc-tools.readthedocs.io/en/latest">Documentation for CCDC in GEE</a>). 
+
+<p><strong>Part 1:</strong>
+Access the completed practical script <a href="https://code.earthengine.google.com/433c922d32a32098fae7b790b0d8d8e3">here</a>.
+
+<p>The end product for Part 1:</p>
+
+<img src="img/8_img0.png" width="650" alt="" title="" />
+
+<p>Set up your workspace. Start by creating your study region polygon.</p>
+
+<pre><p><code class="javascript" id="target1">/////////////////////////////////
+///// Select your study region //
+/////////////////////////////////
   
-<p>The first dataset, <a href="https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003">SRTM30</a>, is a 30m Digital Elevation Model (DEM) 
-from the Shuttle Radar Topography Mission (SRTM). The second, <a href="https://developers.google.com/earth-engine/datasets/catalog/ESA_CCI_FireCCI_5_1">FireCCI51</a>, 
-is a Fire_cci Burned Area pixel product version 5.1 from MODIS. 
-Figure 1 below, describes how to import the boundary shapefile for the Kruger National Park (Kruger) from files stored locally on your hard-drive. 
-The process is similar to import image files (e.g. GeoTIFF or TFRecords), which we'll go through in class.
-Download and save the required files from <a href="https://drive.google.com/file/d/1omD5vPk4LMQSnC2BHJCg6GlnmpzBsFQG/view?usp=sharing">here</a>.</p>
-<p><img src="img/5_img2.png" alt="" title=""/>
-<br><strong>Figure 1:</strong> Process to upload a shapefile into GEE as a new assest imported into the script as a FeatureColection</p>
-<hr>
-<p><strong>Filtering data</strong>
-<br>First define your variables for the temporal and spatial windows of interest. 
-We will use these variables to filter our data before processing.</p>
-
-<pre><p><code class="javascript" id="target2">// Set your start and end dates to filter by
-var startDate = ee.Date.fromYMD(2001,1,1);
-var endDate = ee.Date.fromYMD(2018,12,31);
-var years = ee.List.sequence(2001, 2018);
-// Or do this later from actual variable i.e. var years = ee.List(fire.aggregate_array('year')).distinct().sort();
-
-// Convert your imported "Table" asset to a geometry
-// You'll need it later for clipping ImageCollections
-var zones_geo = zones.geometry();
-
-// Clip the DEM to Kruger
-var srtm = dem.clipToCollection(zones);
-// or var dem = dem.clip(knp_aoi)
-
-// Select appropriate bands, filter by dates, clip by AOI, 
-// set year and yrmnth properties
-var fire = FireCCI
-    .select(['BurnDate','ConfidenceLevel'])
-    .filterDate(startDate, endDate)
-    .map(function(img) { // Use function to add year as property to each image
-      return img
-              .clip(zones_geo)
-              .set('year', ee.Image(img).date().get('year'))
-              .set('yrmnth',ee.Date.parse('YYYY_MM_DD', (img.get('system:index'))).format('YYYY_MM'));
-    });</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
-<script>new ClipboardJS('.btn');</script></pre>
-<hr>
-<p><strong>Processing</strong>
-<br>Now remove all burn scars from the fire dataset that have a confidence interval of less than 50%.</p> 
- 
-<pre><p><code class="javascript" id="target3">// Remove all fires with less than 50% confidence
-var confMask = fire.map(function(img) {
-  var conf = img.select('ConfidenceLevel');
-  var level = conf.gt(50);
-  return img
-      .updateMask(level)
-      .select('BurnDate') //return only 'BurnDate' band
-      .set('year', ee.Image(img).date().get('year'))
-      .set('yrmnth', ee.Image(img).get('yrmnth'));
-});</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
+// Create a polygon/import a featureCollection
+  
+/////////////////////////////////
+///// Set map options ///////////
+/////////////////////////////////
+  
+Map.centerObject(studyRegion, 9);
+  
+/////////////////////////////////
+///// Load extra libraries //////
+/////////////////////////////////
+  
+// The utilities package for ccdc is the best developed of the ccdc api's
+var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
+// the temporal segmentation package does a good job doing some basic ccdc functions
+var temporalSegmentation = require('users/wiell/temporalSegmentation:temporalSegmentation');
+// the palettes package for map outputs
+var palettes = require('users/gena/packages:palettes');</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<hr>
-<p><strong>Summarise results</strong>
-<br>Run the function and summarise the burn scars by the frequency areas are burnt 
-in Kruger annually from 2001 until 2018.
+<p>Next set up the required parameters for the CCDC analysis and load in the Landsat collection. Plot out the least cloudy image from the Landsat collection, which you can use to create your training data with the point tool.</p>
 
-<pre><p><code class="javascript" id="target5">// Count the distinct DOY the occurrences of those fires AND
-// Set the band property to year
-var fireCNT = ee.ImageCollection.fromImages(years.map(function(year) {
-  return confMask
-    .filterMetadata('year', 'equals', year) // Filter image collection by year
-    .select('BurnDate').reduce(ee.Reducer.countDistinct()) // Reduce image collection by counting distinct doy
-    .set('year', year);
-}));
+<pre><p><code class="javascript" id="target2">  /////////////////////////////////
+///// Set up parameters /////////
+/////////////////////////////////
+  
+// Parameters for change detection algorithm
+var changeDetection = {
+  breakpointBands: ['GREEN','RED','NIR','SWIR1','SWIR2','NDFI'], // bands to use for regression
+  tmaskBands: ['GREEN','SWIR2'],
+  lambda: 20/10000, // tuning parameter
+  // minObservations: 6, // observation window
+  // chiSquareProbability: .99, // threshold for change detection
+  // minNumOfYearsScaler: 1.33, // min number of years to apply new fitting
+  // dateFormat: 2,
+  // maxIterations: 25000 // number of runs for LASSO regression convergence
+}
+  
+// Overall parameters
+var params = {
+  start: '2000-01-01',
+  end: '2020-01-01',
+  ChangeDetection: changeDetection,
+  StudyRegion: studyRegion
+  }
+  
+///////////////////////////////////////////
+///// Import & Pre-Process Landsat Data ///
+///////////////////////////////////////////
+  
+// Filter by date and a location in Brazil
+var filteredLandsat = utils.Inputs.getLandsat() // using the utility package loaded earlier
+      .filterBounds(params.StudyRegion)
+      .map(function(image) {return image.clip(studyRegion)})
+      .filterDate(params.start, params.end)
+  
+print('collection size:',filteredLandsat.size())
+  
+// Investigate landsat data
+// Add the image with the least cloud to the map
+Map.addLayer(filteredLandsat.sort('CLOUD_COVER').first(), 
+                {bands: ['RED', 'GREEN', 'BLUE'],min: 0,max: 0.3, gamma: 1.2}, 'Least cloudy image', false);
+// Save the date of the image, which we use for creating a training data set
+var img_date = ee.Date(filteredLandsat.sort('CLOUD_COVER').first().get('system:time_start')).format("yyyy-MM-dd").aside(print, 'Date cloud free image');
+  
+// At this point you can create your training data
+// Use the point tool to create classes of data based on the cloudless image
+  
+// Add our landsat dataset to the params dictionary
+params.ChangeDetection['collection'] = filteredLandsat
+print('Parameters:', params);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
 
-// Concatenate the DOY per month into a new image collection
-var fireDOY = ee.ImageCollection.fromImages(years.map(function(year) {
-  return confMask
-    .filterMetadata('year', 'equals', year) // Filter image collection by year
-    .select('BurnDate').reduce(ee.Reducer.firstNonNull())
-    .set('year', year);
-}));</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
-<script>new ClipboardJS('.btn');</script></p></pre>
+<img src="img/8_img1.png" width="650" alt="" title="" />
 
-<hr>
-<p><strong>Visualise results on a map</strong>
-<br>To visualise the long-term summaries of your results, first setup your map elements as you've done in previous practicals, then add the layers to your map.
-We can do the park-wide summaries "on-the-fly".
-<pre><p><code class="javascript" id="target5b">// Define a legend for fire frequency
-// Light colours are areas that burn less frequently, 
-// dark colours are areas that burn often
-var visCnt = {
-    min:2, max:12, // min:2, max:27 OR 1st StdDev
-    palette:['eef5b7','99f74f','4ff7b0','4fc2f7','3940db',
-            '7239db','db39db','db395c','7c1229']};
+<p>Now that we have defined our parameters, loaded in and pre-processed the landsat imagery, the CCDC alogrithm can be easily run. Using the temporalSegmentation package, you can chart out the CCDC segments for a specified point (i.e. pixel) and observe the break points detected.</p>
 
-// // Define legend parameters for unique DOY
-// // Light colours are earlier in the year, dark colours are later
-var visDOY = {
-    min:1, max:366, 
-    palette:['008000','00b050','92d050','c9ee12','ffd966','bf8f00',
-    'bf8f00','ffd966','c9ee12','92d050','00b050','008000']};
-    
-// Add overall results to map
-Map.centerObject(zones, 7);
-// Calculate overall mode "on-the-fly" and add to KNP map
-Map.addLayer(confMask.mode(), visDOY, 'Most frequently burnt DOY', true, 0.8);
-// Calculate overall fire frequencies "on-the-fly" and add to KNP map
-Map.addLayer(fireCNT.sum(), visCnt, 'Fire frequency', false, 0.8);
-Map.addLayer(zones,{color: 'grey'}, 'Kruger Park', false, 0.8);</code><button class="btn" id="copy-button" data-clipboard-target="#target5b">Copy</button>
-<script>new ClipboardJS('.btn');</script></p></pre>
-<p><img src="img/5_img4.png" width="650" alt="" title=""/></p>
-<p><strong>Figure 2:</strong> Map with layers indicating the most frequently burnt doy-of-year (doy) and the fire frequency in Kruger from 2001 to 2018</p>
-<hr>
+<pre><p><code class="javascript" id="target3">///////////////////////////////////////////
+///// Run CCDC Algorithm //////////////////
+///////////////////////////////////////////
+  
+var results = ee.Algorithms.TemporalSegmentation.Ccdc(params.ChangeDetection)
+print('CCDC results:',results);
+  
+// Add the harmonic regression segments to the chart
+// Drop a point within your study region to display the chart
+  
+temporalSegmentation.chartPoint({
+      image: results,
+      point: geometry,
+      bandName: 'NDFI',
+      collection: filteredLandsat,
+      callback: function (chart) {
+        print(chart)
+      }
+})</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
+      <script>new ClipboardJS('.btn');</script></pre>
 
-<p><strong>Hillshade and Animation</strong>
-<br>We can create a hillshade from the DEM using the built-in ee.Terrain.hillshade function. 
-Unfortunately, we can't add text to your animation from the Code Editor (at least none that I'm aware of) but there are a few ways 
-you can do this after saving your .gif outside of GEE.
-For example, using free image editor software like <a href="https://www.gimp.org/">GIMP</a>; online converters like <a href="https://ezgif.com/add-text" target="_blank">Ezgif</a>; 
-the <a href="https://geemap.org/">geemap</a> Python API; or even through <a href="https://cran.r-project.org/">R</a> with <a href="https://r-spatial.github.io/rgee/">rgee</a>.
+<img src="img/8_img2.png" width="650" alt="" title="" />
 
-<pre><p><code class="javascript" id="target8">// Calculate hillshading
-var hillshade = ee.Terrain.hillshade(dem);
-// print('Check hillshade', hillshade);
+<p>In this chart, the CCDC algorithm suggests there was a change in land cover around early 2005. The y-axis shows changes in NDFI.</p>
 
-// Define the hillshade background legend parameters
-var srtmParams = {
-  min: 170, // Elevation min 100
-  max: 187, // Elevation max 840
-  gamma: 1,
-};
+<p>At this point, it is a good idea to save the CCDC output to your asset. This will help further down the line, by saving memory and will make your code run a lot more smoothly. Once export, you can comment out this code and load the image back in from your assets.</p>
 
-// // Check visual parameters work for your AOI
-// Map.addLayer(hillshade, srtmParams, 'Hillshade', true, 0.8);
+<pre><p><code class="javascript" id="target4">///////////////////////////////////////////////////////
+/// Only run this bit once & save results to ASSETS ///
+///////////////////////////////////////////////////////
+  
+// var segments = temporalSegmentation.Segments(results) // Create temporal segments
+  
+// This is the image you will use for the rest of Part 1
+  
+// // Export as asset. Include same options as for regular exports.
+// // Skip the image and pyramidingPolicy though, which gets defaulted.
+// segments.toAsset({
+//   description: 'ccdc_segments',
+//   region: studyRegion,
+//   scale: 30,
+//   crs: 'EPSG:4326'
+// })
+  
+// This is the image you will use for Part 2
+  
+// Export.image.toAsset({
+//   image: results,
+//   scale: 30,
+//   description: 'ccdc_L_raw',
+//   maxPixels: 1e13,
+//   region: studyRegion,
+//   pyramidingPolicy: {
+//   '.default': 'sample'
+//   }
+// })
+  
+// Load the CCDC results back in
+var segmentsImage = ee.Image('users/jdmwhite/ccdc_segments') // Load CCDC asset
+var segments = temporalSegmentation.Segments(segmentsImage) // Create temporal segments</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
+        <script>new ClipboardJS('.btn');</script></pre>
 
-// Set the clipped SRTM image as background
-var srtmVis = hillshade.visualize(srtmParams);
-// -------------------------------------------------------------------------
+<p>Once the CCDC image is loaded back in, we can now prepare the training and testing points for classification. The training points require a land cover type label and a date, which corresponds to the image the data was collected from.</p>
 
-// Define GIF visualization parameters
-var gifParams = {
-  'region': zones_geo,
-  'dimensions': 500,
-  'crs': 'EPSG:3857', // Check projection
-  'framesPerSecond': 1
-};
+<pre><p><code class="javascript" id="target5">///////////////////////////////////////////////////////
+/// Prepare data for classification ///////////////////
+///////////////////////////////////////////////////////
+  
+// Prepare the training point data
+// Convert the ee.Geometry.Multipoint to FeatureCollections and set type & date values
+  
+// Forest
+var forest = ee.FeatureCollection(forest.coordinates().map(function(p) {
+    var type = ee.Feature(ee.Geometry.Point(p), {type: 1}) // 1 for forest
+    var date_type = type.set('date', img_date)
+    return date_type}))
+  
+// Other
+var other = ee.FeatureCollection(other.coordinates().map(function(p) {
+    var type = ee.Feature(ee.Geometry.Point(p), {type: 0}) // 0 for other
+    var date_type = type.set('date', img_date)
+    return date_type}))
+  
+//Stratified random sampling for each class
+// First for forest
+var forest_table = forest.randomColumn({seed: 16});
+var forest_training = forest_table.filter(ee.Filter.lt('random', 0.80));
+var forest_test = forest_table.filter(ee.Filter.gte('random', 0.80));
+  
+// Next for other
+var other_table = other.randomColumn({seed: 16});
+var other_training = other_table.filter(ee.Filter.lt('random', 0.80));
+var other_test = other_table.filter(ee.Filter.gte('random', 0.80));
+  
+//Combine our forest & other reference points for our training & test data
+var trainingPoints = forest_training.merge(other_training);
+var testingPoints = forest_test.merge(other_test).aside(print, 'test data');
+  
+// Function to remove the random column, as it isn't needed for later
+var removeProperty = function(feat, property) {
+    var properties = feat.propertyNames()
+    var selectProperties = properties.filter(ee.Filter.neq('item', property))
+    return feat.select(selectProperties)
+}
+  
+// remove the random property in each feature
+var trainingPoints = trainingPoints.map(function(feat) {
+    return removeProperty(feat, 'random')
+})
+print(trainingPoints, 'training points')
+  
+  var testingPoints = testingPoints.map(function(feat) {
+    return removeProperty(feat, 'random')
+  })</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+          <script>new ClipboardJS('.btn');</script></pre>
+  
+<p>We now want to sampe the pixels for each point in the training and testing data. First use the mapSegment function to extract information for each temporal segment. Then select the images (by date) that you wish to classify. Lastly, sample the data for both training and testing datasets.</p>
 
-// Create RGB visualization images for use as animation frames.
-var srtmFires = fireDOY.map(function(img) {
-  return srtmVis
-        .paint(zones, 'grey', 1) // Add zones boundary
-        .blend(img.visualize(visDOY)); // Blend hillshade with zones and clip
+<pre><p><code class="javascript" id="target6">// Function to extract an image from a segment. Used when sampling and classifying.
+// Provide whatever information you think helps the classification in this image
+var mapSegment = function(segment) {
+    var image = segment.toImage() 
+    var rmse = image.select('.*_rmse')
+    var ndfiCoefs = segment.coefs('NDFI')
+    var fit = segment.fit()
+    return ee.Image([rmse, ndfiCoefs, fit])
+}
+  
+// Create regression for two dates to provide quick feedback on classification results
+var Segment_2005 = segments.findByDate('2001-01-01', 'closest') // selects image closest to this date
+var Image_2005 = mapSegment(Segment_2005)
+  
+var Segment_2015 = segments.findByDate('2015-01-01', 'closest') // selects image closest to this date
+var Image_2015 = mapSegment(Segment_2015)
+print('test image:', Image_2015);
+  
+// create the training data by overlaying the ref data on the segments
+var trainingData = segments.sample(trainingPoints, mapSegment, 30) // select scale
+print('trainingData', trainingData)
+  
+// create the training data by overlaying the ref data on the segments
+var testingData = segments.sample(testingPoints, mapSegment, 30) // select scale
+// print('testingData', trainingData)</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+            <script>new ClipboardJS('.btn');</script></pre>
+
+<p>Now we can train our classifier using a Random Forest. Once the classifier is trained, classify both extracted images. Next you can run the model evaluation.</p>
+
+<pre><p><code class="javascript" id="target7">///////////////////////////////////////////////////////
+/// Classify a single image ///////////////////////////
+///////////////////////////////////////////////////////
+  
+var classifier = ee.Classifier.smileRandomForest(50)
+    .train({
+    features: trainingData,
+    classProperty: 'type'
 });
-// print("check srtmFires", srtmFires);
-
-// Print the GIF URL to the console
-var myGIF = srtmFires.getVideoThumbURL(gifParams);
-print(myGIF);
-
-// Render the GIF animation in the console
-print(ui.Thumbnail({
-  image: srtmFires,
-  params: gifParams,
-  style: {
-    position: 'bottom-right',
-    width: '180px'
-  }}));
   
-// Or create a video thumbnail and add it to the map.
-var thumb = ui.Thumbnail({
-  // Specifying a collection for "image" animates the sequence of images.
-  image: srtmFires,
-  params: gifParams,
-  style: {
-    position: 'bottom-right',
-    width: '160px'
-  }});
-Map.add(thumb);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
-<script>new ClipboardJS('.btn');</script></p></pre>
-<p><img src="img/5_img5c.gif" width="200" alt="" title=""/></p>
-<p><strong>Figure 3:</strong> Animation of days fires occurred in Kruger from 2001 to 2018. 
-Light colours represent fires that happened earlier in the year, while dark colours are those that burnt in later months</p>
-<p>To export the animation, simply right mouse-click and select Save Image As… to save the animation locally as a .GIF file to your hard-drive.</p>
+var testClassification_2005 = Image_2005
+    .classify(classifier.setOutputMode('CLASSIFICATION'))
+print(testClassification_2005, 'testClassification 2005');
+  
+var testClassification_2015 = Image_2015
+    .classify(classifier.setOutputMode('CLASSIFICATION'))
+// print(testClassification_2015, 'testClassification 2015');
+  
+///////////////////////////////////////////////////////
+/// Model Evaluation //////////////////////////////////
+///////////////////////////////////////////////////////
+  
+//Test accuracy
+var Test = testingData.classify(classifier);
+print('ConfusionMatrix', Test.errorMatrix('type', 'classification'));
+print('TestAccuracy', Test.errorMatrix('type', 'classification').accuracy());
+print('Kappa Coefficient', Test.errorMatrix('type', 'classification').kappa());
+print('Producers Accuracy', Test.errorMatrix('type', 'classification').producersAccuracy());
+print('Users Accuracy', Test.errorMatrix('type', 'classification').consumersAccuracy());</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+              <script>new ClipboardJS('.btn');</script></pre>
+
+<p>The final step in Part 1, is to visualise the images and calculate a simple binary change from the two images (2015 minus 2005). We will add layers for RGB and NDFI and then add the classified layers.</p>
+
+<pre><p><code class="javascript" id="target8">///////////////////////////////////////////////////////
+/// Visualisation /////////////////////////////////////
+///////////////////////////////////////////////////////
+  
+// Creat a palette for the NDFI layer
+var palette = palettes.crameri.bamako[10].reverse();
+  
+// Add the layers to the map
+// RGB images
+Map.addLayer(Image_2005, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2005 RGB', false)
+Map.addLayer(Image_2015, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2015 RGB', false)
+// NDFI layers
+Map.addLayer(Image_2005, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2005 NDFI', false)
+Map.addLayer(Image_2015, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2015 NDFI', false)
+// Classifications
+Map.addLayer(testClassification_2005, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2005', false)  
+Map.addLayer(testClassification_2015, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2015', false)  
+  
+/////////////////////////////
+// Simple Binary Change /////
+/////////////////////////////
+  
+// Subtract the 2015 classification from the 2005 classification
+var coverChange = testClassification_2015.subtract(testClassification_2005);
+  
+// Add the layer to the map. Red = loss; Grey = no change; Green = gain
+Map.addLayer(coverChange,{palette: ['red','grey','green'], min: -1, max: 1},'Forest Cover Change 2005-2015',false);
+  
+// Let's create a chart of the area of each class
+var labels =[ 'gain','no change','loss' ];
+var areaClass = coverChange.eq([1, 0, -1]).rename(labels);
+// Calculate the area for each pixel
+var areaEstimate = areaClass.multiply(ee.Image.pixelArea()).divide(1e6);
+  
+// Set up the chart
+var chart = ui.Chart.image.regions({
+    image: areaEstimate,
+    regions: studyRegion,
+    reducer: ee.Reducer.sum(),
+    scale: 1000,
+  }).setChartType('PieChart').setOptions({
+    width: 250,
+    height: 350,
+    title: 'Area by class (sqkm)',
+    // is3D: true,
+    colors: ['green','red','grey'],
+});
+print(chart);
+
+////////////////////////////
+////// legend for classes //
+////////////////////////////
+  
+// See: https://mygeoblog.com/2016/12/09/add-a-legend-to-to-your-gee-map/
+  
+// set position of panel
+var legend = ui.Panel({
+    style: {
+      position: 'bottom-left',
+      padding: '8px 15px'
+    }
+});
+   
+// Create legend title
+var legendTitle = ui.Label({
+    value: 'Land Cover Classes',
+    style: {
+      fontWeight: 'bold',
+      fontSize: '18px',
+      margin: '0 0 4px 0',
+      padding: '0'
+      }
+});
+   
+// Add the title to the panel
+legend.add(legendTitle);
+   
+// Creates and styles 1 row of the legend.
+var makeRow = function(color, name) {
+   
+  // Create the label that is actually the colored box.
+        var colorBox = ui.Label({
+          style: {
+            backgroundColor: '#' + color,
+            // Use padding to give the box height and width.
+            padding: '8px',
+            margin: '0 0 4px 0'
+          }
+        });
+   
+  // Create the label filled with the description text.
+        var description = ui.Label({
+          value: name,
+          style: {margin: '0 0 4px 6px'}
+        });
+   
+  // return the panel
+        return ui.Panel({
+          widgets: [colorBox, description],
+          layout: ui.Panel.Layout.Flow('horizontal')
+        });
+};
+   
+//  Palette with the colors
+var palette =['00404D','FFE599'];
+   
+// name of the legend
+var names = ['Forest','Other'];
+   
+// Add color and names
+for (var i = 0; i < 2; i++) {
+    legend.add(makeRow(palette[i], names[i]));
+}  
+   
+// add legend to map
+Map.add(legend);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+                <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/8_img3.png" width="650" alt="" title="" />
+
+<p>The RGB images.</p>
+
+<img src="img/8_img4.png" width="650" alt="" title="" />
+
+<p>The NDFI images (darker pixels have a higher NDFI value).</p>
+
+<img src="img/8_img5.png" width="650" alt="" title="" />
+
+<p>The classified images.</p>
+
+<img src="img/8_img6.png" width="650" alt="" title="" />
+
+<p>The binary change image, showing losses, gains and no change in forest cover.</p>
+
+<p>Note: this is a very basic approach to area estimation and recent literature suggests that biases due to classification errors may limit this approach. For more information on alternative approaches, read the Arévalo et al. 2020 paper and see https://area2.readthedocs.io/en/latest/overview.html</p>
+
 <hr>
 
-<p><strong>Charting</strong>
-<br>To plot these results, first define your chart parameters (e.g. title and axis labels), then create the different charts, 
-incorporating these pre-defined chart parameters and print it to the console as follows:
+<p><strong>Part 2:</strong>
+Access the completed practical script <a href="https://code.earthengine.google.com/7de4528990ac9a63bb1f9dc40e8e2c70">here</a>.
 
-<pre><p><code class="javascript" id="target6">// Monthly fire frequencies per year for the whole Park
-var opt_cntFireMonth = {
-  title: 'Monthly fire frequencies: Kruger National Park 2001 to 2018',
-  pointSize: 3,
-  hAxis: {title: 'Year Month'},
-  vAxis: {title: 'Number of fires'},
-};
+<p>The end product for Part 2:</p>
 
-// Plot day count of monthly fires
-var cntFireMonth_chart = ui.Chart.image.series({ // ui.Chart.image.byRegion
-  imageCollection: confMask.select('BurnDate'), // <------ CHANGED to confMask
-  xProperty: 'yrmnth',
-  region: zones_geo,
-  reducer: ee.Reducer.countDistinct(),
-  scale: 1000 // <------ I CHANGED TO SCALE TO 1KM, TO SEE IF THAT HELPS WITH TIME-OUT ISSUES
-}).setOptions(opt_cntFireMonth).setChartType('LineChart');
-print(cntFireMonth_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
-<script>new ClipboardJS('.btn');</script></p></pre>
+<img src="img/8_img11.png" width="650" alt="" title="" />
 
-<p><img src="img/5_img3.png" width="650" alt="" title=""/></p>
-<p><strong>Figure 4:</strong> Line chart the number of days a fire occured in Kruger from 2001 to 2018</p>
+<p>For Part 2, start in a similar way by setting up your map options and loading the additional libraries. This time we will only use the CCDC utilities package.</p>
 
-<pre><p><code class="javascript" id="target7">// Annual fire frequencies per region
-// Count for individual image and return annual sum unique doy
-// Again, pre-define the chart parameters
-var opt_fireYr = {
-  title: 'Count number of Fires per region',
-  hAxis: {title: 'Time'},
-  vAxis: {title: 'Fire Frequency'},
-  colors: ['1d6b99', '39a8a7', '0f8755', '76b349']
-};
+<pre><p><code class="javascript" id="target9">/////////////////////////////////
+///// Set map options ///////////
+/////////////////////////////////
+  
+Map.centerObject(studyRegion, 9);
+  
+/////////////////////////////////
+///// Load extra libraries //////
+/////////////////////////////////
+  
+// The utilities package for ccdc is the best developed of the ccdc api's
+var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
+// the palettes package for map outputs
+var palettes = require('users/gena/packages:palettes');</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
 
-// create a chart with a reducer
-var fireYr_chart = ui.Chart.image.seriesByRegion({
-  imageCollection: fireCNT, 
-  regions: zones, 
-  reducer: ee.Reducer.sum(), 
-  band: 'BurnDate_count', 
-  scale: 1000, 
-  xProperty: 'year', 
-  seriesProperty: 'region'})
-    .setChartType('ColumnChart')
-    .setOptions(opt_fireYr);
-print(fireYr_chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
-<script>new ClipboardJS('.btn');</script></p></pre>
-<p><img src="img/5_img5.png" width="650" alt="" title=""/></p>
-<p><strong>Figure 5:</strong> Number of fires by region from 2001 to 2018</p>
+<p>Now import your CCDC image ('results') from Part 1 that were exported to your assets. There is a problem now... the CCDC image is stored as an array. This is done because before starting, we do not know the length of each variable calculated by the CCDC algorithm. Some have many segments, some hav few. This means we need to convert it to a 'regular' or 'synthetic' EE image. First create a list of the bands you are interested in, followed by the max. number of segments you are expecting. Lastly, run the buildCcdImage function, which will perform the conversion for you.</p>
 
-<hr>
+<pre><p><code class="javascript" id="target10">///////////////////////////////////////////
+///// Import Data /////////////////////////
+///////////////////////////////////////////
+  
+// Load the CCDC results back in
+var results = ee.Image("users/jdmwhite/ccdc_Rondonia_example")
+  
+///////////////////////////////////////////
+///// Process /////////////////////////////
+///////////////////////////////////////////
+  
+// Spectral band names. This list of all the bands we are interested in
+var BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2']
+  
+// Names of the temporal segments and the number. There are not likely to be more than 
+// 10 segments for each pixel
+var SEGS = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10"]
+  
+// Obtain CCDC results in 'regular' ee.Image format
+var ccdImage = utils.CCDC.buildCcdImage(results, SEGS.length, BANDS)
+print('ccdImage:',ccdImage);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
 
-<p><strong>More on charting: Visualising relationships</strong>
-<br>An easy way to visualise the relationship between variables is using a scatterplot. 
-For example, using your own point data intersected with bioclimatic variables, or between two images as follows:
+<p>We now run the filterMag function, which extracts three bands from the 'synthetic' image. This includes the time of the biggest break (tBreak), the total number of breaks (numTbreak) and the magnitude of the biggest break (MAG). Select a band to use (as different bands may produce different segmentation) and the number of segments to extract and ensure that your dates are correctly formatted.</p>  
 
-<pre><p><code class="javascript" id="target9">// Add the two images together as xxx
-// Rename the bands at the same time
-var rivFire = river.addBands(fireCNT.sum()).rename(['river','fire']);
-print('Check rivFire', rivFire);
+<pre><p><code class="javascript" id="target11">// Convert the date to a format required
+  var changeStart = '1999-01-01'
+  var changeEnd = '2020-01-01'
+  var startParams = {inputFormat: 3, inputDate: changeStart, outputFormat: 1}
+  var endParams = {inputFormat: 3, inputDate: changeEnd, outputFormat: 1}
+  var formattedStart = utils.Dates.convertDate(startParams).aside(print)
+  var formattedEnd = utils.Dates.convertDate(endParams).aside(print)
+  
+  // Run the filterMag function from the utils package
+  // This extracts information on the time of the biggest break (tBreak)
+  // the magnitude of the biggest break (MAG) and the total number of breaks (numTbreak)
+  var filteredChanges = utils.CCDC.filterMag(ccdImage, formattedStart, formattedEnd, 'SWIR1', SEGS)
+  print('filterChanges:',filteredChanges);</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+    <script>new ClipboardJS('.btn');</script></pre>
+  
+<p>Now visualise the different images and run a quick histogram to see the distribution of the major change dates.</p>
 
-// Get a sample sample of points across
-var sample = rivFire.sampleRegions(zones_geo, null, 5000);//408453 vs 102046
-// Or sample N points = geometry features to plot
-// var sample = rivFire.sample({ region: zones_geo, scale: 30, numPixels: 4000, geometries: true}); 
-Map.addLayer(sample.style({ color: 'blue', pointSize: 1 }), {}, 'samples');
-// print('Check sample size', sample.size());
-// print('Check sample info', sample);
-
-// Plot scatterplot from sample intersects
-var chart = ui.Chart.feature.byFeature(sample, 'fire', 'river')
-    .setChartType('ScatterChart')
-    .setOptions({pointSize: 2, pointColor: 'blue', 
-              titleX: 'Fire', 
-              titleY: 'Distance to River',
-              trendlines: { 0: {showR2: true, visibleInLegend: true} , 
-                    1: {showR2: true, visibleInLegend: true}}
+<pre><p><code class="javascript" id="target12">///////////////////////////////////////////
+///// Visualisation ///////////////////////
+///////////////////////////////////////////
+  
+// A chosen palette
+var change_date_palette = palettes.matplotlib.plasma[7];
+var mag_palette = palettes.colorbrewer.PuOr[7];
+var num_breaks_palette = palettes.matplotlib.viridis[7];
+  
+// The time of break
+Map.addLayer(filteredChanges.select('tBreak'), {min: 1999, max: 2020, palette: change_date_palette}, 'Change date');
+// The magnitude of break
+Map.addLayer(filteredChanges.select('MAG'), {min: -0.2, max: 0.2, palette: mag_palette}, 'Magnitude');
+// The number of breaks
+Map.addLayer(filteredChanges.select('numTbreak'), {min: 1, max: 9, palette: num_breaks_palette}, 'Number of breaks');
+  
+// Histogram of Change date
+// Make sure you have your original study region defined
+var hist = ui.Chart.image.histogram({
+    image:filteredChanges.select('tBreak'),
+    region:studyRegion,
+    minBucketWidth: 1,
+    scale: 1000,
+})
+print(hist);
+  
+// Add in legend for aid in visualisation
+  
+///////// tBreak
+  
+// Styling for the legend title.
+var LEGEND_TITLE_STYLE = {
+    fontSize: '16px',
+    // fontWeight: 'bold',
+    stretch: 'horizontal',
+    textAlign: 'left',
+    margin: '4px',
+  };
+  
+function ColorBar(palette) {
+    return ui.Thumbnail({
+      image: ee.Image.pixelLonLat().select(0),
+      params: {
+        bbox: [0, 0, 1, 0.1],
+        dimensions: '100x10',
+        format: 'png',
+        min: 0, // change min value
+        max: 1, // change max value
+        palette: change_date_palette, // chose the correct palette
+      },
+      style: {stretch: 'horizontal', margin: '0px 8px'},
     });
-print(chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
-<script>new ClipboardJS('.btn');</script></p></pre>
+}
+  
+// Returns our labeled legend, with a color bar and three labels representing
+// the minimum, middle, and maximum values.
+function makeLegend() {
+    var labelPanel = ui.Panel(
+        [ui.Label('1999', {margin: '4px 8px'}), // change min label here
+        ui.Label('',{margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
+        ui.Label('2020', {margin: '4px 8px'})], // change max label here
+        ui.Panel.Layout.flow('horizontal'));
+    return ui.Panel([ColorBar(change_date_palette.palette), labelPanel]);
+}
+  
+// Assemble the legend panel.
+Map.add(ui.Panel(
+      [
+        ui.Label('Change Date', LEGEND_TITLE_STYLE), makeLegend() // change title here
+        ],
+      ui.Panel.Layout.flow('vertical'),
+      {width: '230px', position: 'bottom-left'})); // change location here to chose where to put legend</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
+    <script>new ClipboardJS('.btn');</script></pre>
+
+<img src="img/8_img7.png" width="650" alt="" title="" />
+  
+<p>The date of the biggest change.</p>
+
+<img src="img/8_img8.png" width="650" alt="" title="" />
+
+<p>Histogram showing the distribution of the date of biggest change.</p>
+
+<img src="img/8_img9.png" width="650" alt="" title="" />
+
+<p>The magnitude of the biggest change. Purple shows a decrease in the chosen band (SWIR1 in this case) and orange shows an increase.</p>
+
+<img src="img/8_img10.png" width="650" alt="" title="" />
+
+<p>The total number of changes (segments) recorded. Dark colours show less changes.</p>  
+
+<hr> 
+
+<p><strong>There is no assignment for this practical</strong>
+
+<p><strong>Sharing your code to complete the practical assignments </strong>
+To complete the practical exercise below you need to know how to share your scripts with us. Simply click on "Get Link" - the actual button NOT the dropdown arrow - Then click the "Click to copy link" button and paste that in an email to us <a href="mailto:ots.online.education@gmail.com">ots.online.education@gmail.com</a>. !NB! Please remember to add the prac number in the header.
+                          
 <hr>
+Please share your feedback on this practical by completing this quick (2 min) <a href="https://docs.google.com/forms/d/e/1FAIpQLSeJaXeBflF5_BtHbEEfDgFmcqL3w_f3MW7KXnhM27ZdFFn2xw/viewform?usp=pp_url" target="_blank">survey</a>. Thank you!
 
-<p><strong>Practical Assignment #5</strong>
-<br>Please complete the practical exercise below and share your script with us, as you have done in previous practicals. 
-This time, don't forget to also share your local assets with use (see figure below for help).
-!NB! Remember to add the prac number in the header please.
-<p><img src="img/5_img6.png" width="400" alt="" title=""/></p>
-<pre><p><code class="javascript" id="target10">// Upload a local asset, a shapefile boundary for example, and share the assest 
-// before importing it as an import entry into your script
-// Import and filter a GEE dataset (e.g. FireCCI) of your choice
-// Generate an animation (with or without a hillshade)
-// Finally chart the results and group-by a region filed (hint: see lines 227-248)</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
-<script>new ClipboardJS('.btn');</script></p></pre>
-
-<p>If you're feeling adventurous and would like to try the scatterplot example with Tree Cover by 
-<a href="https://koedoe.co.za/index.php/koedoe/article/view/1621">Urban et al (2020)</a>, you can download the .tif version of the 
-percentage tree cover for Kruger <a href="https://drive.google.com/file/d/1ERKSwrdjdqYkGqEHJSTwMs35OQKOtbjX/view?usp=sharing">here</a>.
-<hr>
-
-<p>Please share your feedback on this practical by completing this <a href="https://docs.google.com/forms/d/1AShA7pBEcRrUn7a0pA8fEq8qSismI5l2CIOk-Wij-Cw/viewform" target="_blank">quick (2 min) survey.</a> Thank you.</p>
 </div>
 
 <div id="sidebar">
@@ -355,17 +648,23 @@ percentage tree cover for Kruger <a href="https://drive.google.com/file/d/1ERKSw
 </nav>
 <nav class="drop-down-menu">
 <input type="checkbox" class="activate" id="accordion-2" name="accordion-2">
-<label for="accordion-2" class="menu-title">> COURSE 2021</label>
+<label for="accordion-2" class="menu-title">> COURSE APR 2021</label>
+<div class="drop-down">
+<li><a href="">Check again later</a></li>
+</div>
+</nav>
+<nav class="drop-down-menu">
+<input type="checkbox" class="activate" id="accordion-3" name="accordion-3">
+<label for="accordion-3" class="menu-title">> COURSE NOV 2021</label>
 <div class="drop-down">
 <li><a href="1_prac.html">[Prac1] Getting started</a></li>
 <li><a href="2_prac.html">[Prac2] Spectral indices</a></li>
 <li><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
 <li><a href="4_prac.html">[Prac4] Interactive App</a></li>
-<li class="selected"><a href="5_prac.html">[Prac5] Time series-Fire</a></li>
-<li><a href="6_prac.html">[Prac6] Species patterns</a></li>
-<li><a href="7_prac.html">[Prac7] Landcover class</a></li>
-<li><a href="8_prac.html">[Prac8] Change analysis</a></li>
-<li><a href="9_prac.html">[Prac9] Your own data</a></li>
+<li class="selected"><a href="5_prac.html">[Prac5] Change analysis</a></li>
+<li><a href="6_prac.html">[Prac6] Landcover class</a></li>
+<li><a href="7_prac.html">[Prac7] Time series-Fire</a></li>
+<li><a href="8_prac.html">[Prac8] Species patterns</a></li>
 </div>
 </nav>
 <li><a href="10_contact.html">CONTACT US</a></li>
@@ -377,7 +676,7 @@ percentage tree cover for Kruger <a href="https://drive.google.com/file/d/1ERKSw
 </div>
 
 <div style="clear: both;"> </div>
-<ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>	
+<ul style="text-align:center; padding: 0px 0px 0px 0px;background: #ffffff;"><img src="img/logo_all.png" align="middle" width="800" height="123" alt="" title=""/></ul>
 
 <div id="footer">
 <p>&copy; Copyright 2021 BioGIS | Designed by <a href="http://www.biogis.co.za" target="_blank">BioGIS</a></p>
@@ -399,6 +698,5 @@ percentage tree cover for Kruger <a href="https://drive.google.com/file/d/1ERKSw
         console.log(e);
       });
 </script>
-
 </body>
 </html>

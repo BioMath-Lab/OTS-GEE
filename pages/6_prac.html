@@ -19,213 +19,251 @@
 </div>
 
 <div id="content">
-  <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
-  <p><strong>Practical 6: Supervised learning: Landcover classification</strong>
-  <br>
-  <hr>
-  <p>Authored by Geethen Singh</p>
-  <p>Access the complete practical, part 1 script <a href="https://code.earthengine.google.com/c74c83c72042edb09daaea7d5becc8dd">here</a></p>
-  <p><strong>Learning Objectives</strong></p>
-  <p>By the end of this practical you should be able to:</p>
-  <ol>
-  <li>Describe the workflow for a typical supervised classification workflow.</li>
-  <li>Create reference data for classes of interest.</li>
-  <li>Fit a random forest model on spectral variables to map the distribution of water, built-up areas, tree-cover, and other (neither of the three classes).</li>
-  <li>Evaluate model accuracy</li>
-  </ol>
-  <p><strong>The end product</strong></p>
-  <p><img src="img/7_img1.png" alt=""></p>
-  <p><strong>Figure 1:</strong> The distribution of water, built-up areas, tree-cover, and other (neither of the three classes) pixels at a 30 m resolution for a heterogeneous coastal area in the Western Cape, South Africa based on Landsat-8 and Sentinel-1 radar imagery.</p>
-  <hr>
-  <p><strong>Step 1: Import data</strong></p>
-  <p>For this practical, you will be required to import Landsat-8 surface reflectance and Sentinel-1 Ground Range Detected imagery (GRD) data. Rename these as l8sr and s1 respectively. You have been provided with a reference points dataset (four feature collections within the imports section). However, you have the functionality within GEE to create your own reference points for each of the four classes of interest i.e. water, built-up areas, tree-cover, and other.</p>
-  <hr>
-  <p><strong>Alternatively, Create your own reference points</strong></p>
-  <p>In the scenario that you are creating your own reference data points, you can use the following steps. Click on the add Markers button. Thereafter, hover over the geometry imports section and click on the cogwheel besides the geometry and set up the various options by changing the ‘Name’ to the class of interest, changing the ‘import as’ option to a feature collection, and adding a property called label with a unique integer for each class. Once set, click ok and go to the map area and add reference points for the applicable class in appropriate locations. ‘Appropriate locations’ is dependent on the spatial resolution of your imagery to be classified and the time period of interest. For instance, when working with Landsat-8, 30 m imagery, it is ideal if you add markers for areas that are dominated by the class of interest. A higher resolution base map together with an RGB or FCI can be highly useful for guiding your reference point selection. Note, use a base map that overlaps with the period of concern.</p>
-  <p><img src="img/7_img2.png" alt=""></p>
-  <p><strong>Figure 2:</strong> An example of setting up a feature collection for reference point collection of a class named water. Note, the labels for the land cover classes need to be zero-indexed.</p>
-  <hr>
-  <p><strong>Step 2: Data Preparation - Filtering</strong></p>
-  <p>Create a Landsat-8 surface reflectance composite that covers the AOI (shown by the provided geometry) for the period of 1 June 2016 to 30th September 2016, add ndvi and mndwi bands. Lastly, compute the median image, taking into consideration the GEE scaling factor and clipping to the extent of geometry.</p>
-  
-  <pre><p><code class="language-js" id="target1">var filtered = l8sr
-  .filterBounds(geometry)
-  .filterDate(startDate, endDate)
-  .map(function(image){
-  var ndvi = image.normalizedDifference(['B5', 'B4']).rename(['ndvi']);
-  var mndwi = image.normalizedDifference(['B3', 'B7']).rename(['mndwi']);
-  return image.select('B.*').addBands([ndvi,mndwi]);
-  }).median()
-  .divide(10000)
-  .clip(geometry);
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>Similarly, filter the Sentinel-1 data to the AOI for the period of June to September 2016 as above. In addition, filter the s1 image collection to those images that have captured in Interferometric Wide (IW) mode and contain Vertical Transmit and Vertical Receive (VV) and Vertical Transmit and Horizontal Receive polarised bands. Lastly, for each image, select all bands that start with a V and reduce the resulting images to the mean image.</p>
-  <p>For more information on radar, check out:</p>
-  <ul>
-  <li>https://www.servirglobal.net/Global/Articles/Article/2674/sar-handbook-comprehensive-methodologies-for-forest-monitoring-and-biomass-estimation</li>
-  <li>https://earthdata.nasa.gov/learn/backgrounders/what-is-sar</li>
-  <li>https://developers.google.com/earth-engine/tutorials/community/sar-basics</li>
-  </ul>
-  
-  <pre><p><code class="language-js" id = "target2">var s1 = s1.filterBounds(geometry)
-  .filterDate(startDate, endDate)
-  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
-  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
-  .filter(ee.Filter.eq('instrumentMode', 'IW'))
-  .select(&quot;V.&quot;)
-  .mean();
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>Create a final composite image with the bands of both the Landsat-8 composite and Sentinel-1 composite.</p>
-  <pre><p><code class="language-js" id = "target3">var composite = filtered.addBands(s1).aside(print).clip(geometry);
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  <hr>
-  
-  <p><strong>Step 2: Data preparation continued- preparing the train and test datasets</strong></p>
-  <p>The next step is to split this data into a training and testing partition. The training partition is used to fit the model whilst the test data is used to evaluate the accuracy of the model. Here, we use a split of 80% train data and 20% test data. We set the seed to ensure we end up with roughly the same train and test partition when re-running the model.</p>
-  <pre><p><code class="language-js" id= "target4">//Stratified random sampling for each class
-  var new_table = water.randomColumn({seed: 1});
-  var wtraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var wtest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  var new_table = tree_cover.randomColumn({seed: 1});
-  var tctraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var tctest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  var new_table = built_up.randomColumn({seed: 1});
-  var butraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var butest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  var new_table = other.randomColumn({seed: 1});
-  var otraining = new_table.filter(ee.Filter.lt('random', 0.80));
-  var otest = new_table.filter(ee.Filter.gte('random', 0.80));
-  
-  //Combine land-cover reference points for training partition
-  var training = wtraining.merge(tctraining).merge(butraining).merge(otraining).aside(print, 'training partition');
-  var test = wtraining.merge(tctest).merge(butest).merge(otest).aside(print, 'test partition');
-  var points = training.merge(test).aside(print,'all points');
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>Depending on your goal or more specifically, the area that you intend on generalising across determines which is the most suitable way for you to do your sampling. Since we are trying to create our model for a small region, stratified random sampling will suffice. However, if you were trying to generalise across large areas then it is more suitable to use a spatially constrained cross validation technique. This will result in more accurate estimates of accuracy.</p>
-  <hr>
-  <p><strong>Step 2: Data preparation continued -linking the two datasets, extracting the spectral signatures</strong></p>
-  <p>At this point, we have our response (reference points) and explanatory variables (Landsat-8 and Sentinel-1 data) prepared. We can now move on to extracting the spectral signatures at each of the points. Note, the ‘tileScale’ argument may be useful when working with large computations that fail due to computation errors.</p>
-  
-  <pre><p><code class="language-js" id="target5">var Features = composite.sampleRegions({
-  collection: training,
-  properties: ['label'],
-  scale: 30,
-  tileScale:16
-  });
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <hr>
-  <p><strong>Step 3: Model fitting on training data (ofcourse)</strong></p>
-  <p>We fit a random forest model on the extracted spectral data for the training data partition. We choose a value of 100 for the number of trees since this is the defualt value used in pythons scikit-learn package. Choosing a larger value would increase the number of decision trees and increase the likelihood that our model overfits to our training data. Simultaneously, selecting too few trees may result in underfitting to our data.</p>
-  <p>if you are interested in using a data-riven approach to determine the optimum number of trees for example- check out this hyperparameter tuning script within GEE <a href="https://code.earthengine.google.com/1508042eeba0aef8cc17e9907de71a5a?noload=true">link</a></p>
-  
-  <pre><p><code class="language-js" id="target6">var trainedClassifier = ee.Classifier.smileRandomForest(100)
-  .train({
-  features: Features,
-  classProperty: 'label',
-  inputProperties: composite.bandNames()
-  });
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <hr>
-  
-  <p><strong>Step 4: Inference for entire AOI</strong></p>
-  <pre><code class="language-js">var classified = composite.classify(trainedClassifier);
-  </code></pre>
-  
-  <hr>
-  <p><strong>Step 5: Model evaluation on train and test set</strong></p>
-  <p>The training accuracy largely overestimates model accuracy since this data has been used to train the model. We, therefore, use a test set (data unseen by the model) to get a more reliable estimate of model accuracy.</p>
-  
-  <pre><p><code class="language-js" id= "target7">//Train accuracy
-  var trainAccuracy = trainedClassifier.confusionMatrix().accuracy();
-  print('Train Accuracy', trainAccuracy);
-  
-  //Test accuracy
-  var test = composite.sampleRegions({
-  collection: test,
-  properties: ['label'],
-  scale: 30,
-  tileScale: 16
-  });
-  var Test = test.classify(trainedClassifier);
-  print('ConfusionMatrix', Test.errorMatrix('label', 'classification'));
-  print('TestAccuracy', Test.errorMatrix('label', 'classification').accuracy());
-  print('Kappa Coefficient', Test.errorMatrix('label', 'classification').kappa());
-  print('Producers Accuracy', Test.errorMatrix('label', 'classification').producersAccuracy());
-  print('Users Accuracy', Test.errorMatrix('label', 'classification').consumersAccuracy());
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>For more information on acuuracy metrics, check out these medium posts 
-    <ol>
-      <li> <a href="https://towardsdatascience.com/the-5-classification-evaluation-metrics-you-must-know-aa97784ff226">post 1</a></li>
-      <li> <a href ="https://gis.humboldt.edu/OLM/Courses/GSP_216_Online/lesson6-2/metrics.html#:~:text=The%20user%20and%20producer%20accuracy,the%20user's%20accuracy%20was%2071%25.&text=By%20analyzing%20the%20various%20accuracy,the%20analysis%20and%20classification%20results.">post 2</a></li>
-    <li>The use of kappa coefficient is not <a href="https://www.sciencedirect.com/science/article/pii/S0034425719306509?casa_token=bs5DJ6Q1IAEAAAAA:4mnFyd6kC57olnsFDoWRoN-d3cvnId583g4AnLe4Bkz8-RlW0tjXSEKMgN0wZNrh9wModyfsd6A">encouraged</a></li>  
-    </ol>
-  </p> 
-  
-  <hr>
-  <p><strong>Visualisation</strong></p>
-  <p>Visualising the RGB image, reference points, and classified image</p>
-  
-  <pre><p><code class="language-js" id="target8">Map.centerObject(points.geometry().bounds(), 13);
-  Map.addLayer(composite,rgb_vp, 'Landsat-8 RGB');
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <pre><p><code class="language-js" id="target9">showTrainingData();
-  function showTrainingData(){
-  var colours = ee.List([&quot;darkblue&quot;,&quot;darkgreen&quot;,&quot;yellow&quot;, &quot;orange&quot;]);
-  var lc_type = ee.List([&quot;water&quot;, &quot;tree cover&quot;,&quot;built-up&quot;,&quot;other&quot;]);
-  var lc_label = ee.List([0, 1, 2, 3]);
-  var lc_points = ee.FeatureCollection(
-  lc_type.map(function(lc){
-  var colour = colours.get(lc_type.indexOf(lc));
-  return points.filterMetadata(&quot;label&quot;, &quot;equals&quot;, lc_type.indexOf(lc).add(1))
-  .map(function(point){
-  return point.set('style', {color: colour, pointShape: &quot;diamond&quot;, pointSize: 3, width: 2, fillColor: &quot;00000000&quot;});
-  });
-  })).flatten();
-  
-  Map.addLayer(classified, {min: 0, max: 3, palette: [&quot;darkblue&quot;,&quot;darkgreen&quot;,&quot;yellow&quot;, &quot;orange&quot;]}, 'Classified image', false);
-  Map.addLayer(lc_points.style({styleProperty: &quot;style&quot;}), {}, 'TrainingPoints', false);
-  }
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
-  
-  <p>If you are interested in Object Based Image Analysis, check out <a href="https://code.earthengine.google.com/7f0f1f333ac8cdad33a8a531ed1cf186">this script</a>. Since objects are used, some spatial context is used, performs slighly better in terms of accuracy and removes salt and pepper effect at the expense of computation.</p>
-  <p>If you are interested in Convolutional Neural Networks, check out this <a href="https://developers.google.com/earth-engine/guides/tf_examples">link</a></p>
-  <hr>
-  <p><strong>Practical 9, part 2: Supervised learning 2: Improving land cover classification.</strong></p>
-  <p>Access the complete practical, part 2 script <a href="https://code.earthengine.google.com/13481e041280a29ee0fcda5b5eaf722c?noload=true">here</a></p>
-  <p><strong>Learning Objectives</strong></p>
-  <p>By the end of this practical you should be able to:</p>
-  <ol>
-  <li>Understand the role and importance of high-quality training data.</li>
-  <li>Use an objective approach (this is experimental) to improve the selection of training data.</li>
-  <li>Determine the area of applicability for a model.</li>
-  </ol>
-  <p><strong>The end product</strong></p>
-  <p><img src="img/7_img3.png" alt=""></p>
-  <p><strong>Figure 1:</strong> The area of applicability for a model that discriminated water and non-water pixels at a 10 m resolution for a heterogeneous area near Hartbeespoort Dam, South Africa based on Sentinel-2 imagery.</p>
-  <p>The area of applicability concept is based on an experimental concept still under review and has been implemented based on the pre-print version available <a href="https://arxiv.org/abs/2005.07939">here</a>.</p>
-  <p>Reference</p>
-  <p>Meyer, H. and Pebesma, E., 2020. Predicting into unknown space? Estimating the area of applicability of spatial prediction models. arXiv preprint arXiv:2005.07939.</p>
-  <h>
-  </div>
+<h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
+<p><strong>Practical 7: Supervised learning: Landcover classification</strong>
+<br>
+<hr>
+<p>Authored by Geethen Singh</p>
+<p>Access the complete practical, part 1 script <a href="https://code.earthengine.google.com/fe84020aa628eee9ab045627c4873765">here</a></p>
+<p><strong>Learning Objectives</strong></p>
+<p>By the end of this practical you should be able to:</p>
+<ol>
+<li>Describe the workflow for a typical supervised classification workflow.</li>
+<li>Create reference data for classes of interest.</li>
+<li>Fit a random forest model on spectral variables.</li>
+<li>Evaluate model accuracy</li>
+</ol>
+<p><strong>The end product</strong></p>
+<p><img src="/img/7_img1.png" alt=""></p>
+<p><strong>Figure 1:</strong> The distribution of water, built-up areas, tree-cover, and other (neither of the three classes) pixels at a 30 m resolution for a heterogeneous coastal area in the Western Cape, South Africa based on Landsat-8 and Sentinel-1 radar imagery.</p>
+<hr>
+<p><strong>Step 1: Import data</strong></p>
+<p>For this practical, you will be required to import Landsat-8 surface reflectance and Sentinel-1 Ground Range Detected
+   imagery (GRD) data. Rename these as l8sr and s1 respectively. You have been provided with a reference points
+    dataset (four feature collections within the imports section). However, you have the functionality to import a shapefile
+    with reference data into GEE.</p>
+<hr>
+<p><strong>To create your own reference points</strong></p>
+<p> Use the following steps:</p>
+  <p>1) Click on the add Markers button.</p>
+<p>2) Hover over the geometry imports section and click on the cogwheel besides the geometry and set up
+   the various options by </p>
+<p>2.1) changing the ‘Name’ to the class of interest,</p>
+<p>2.2) changing the ‘import as’ option to a feature collection,<p>
+<p>2.3) and adding a property called label with a unique integer for each class.
+<p>3) Once set, click ok and go to the map area and add reference points for the applicable class in
+   appropriate locations. ‘Appropriate locations’ is dependent on the spatial resolution of your imagery
+   to be classified and the time period of interest. For instance, when working with Landsat-8, 30 m imagery,
+   it is ideal if you add markers for areas that are dominated by the class of interest. A higher resolution
+   base map together with an RGB or FCI can be highly useful for guiding your reference point selection.
+   Note, use a base map that overlaps with the period of concern.</p>
+<p><img src="/img/7_img2.png" alt=""></p>
+<p><strong>Figure 2:</strong> An example of setting up a feature collection for reference point collection of
+   a class named water. Note, the labels for the land cover classes need to be zero-indexed (start from zero).</p>
+<hr>
+<p><strong>Step 2: Data Preparation - Filtering</strong></p>
+<p>Create a Landsat-8 surface reflectance composite that covers the AOI (shown by the provided geometry) for
+   the period of 1 June 2016 to 30th September 2016, add ndvi and mndwi bands. Lastly, compute the median image,
+   taking into consideration the GEE scaling factor and clipping to the extent of geometry.</p>
+
+<pre><p><code class="language-js" id="target1">
+  // Scale Landsat-8 collection-2 data
+var scale = function(img){
+  var opticalBands=img.select(["SR_B."]).multiply(0.0000275).add(-0.2); 
+  var thermalBands=img.select("ST_B.*").multiply(0.00341802).add(149.0);
+  return img.addBands(opticalBands,null,true)
+             .addBands(thermalBands,null,true)};
+             
+// Create Landsat-8 composite with added spectral indices
+var filtered = l8sr
+                  .filterBounds(geometry)
+                  .filterDate(startDate, endDate)
+                  .map(function(image){
+            var ndvi = image.normalizedDifference(['B5', 'B4']).rename(['ndvi']);
+            var mndwi = image.normalizedDifference(['B3', 'B7']).rename(['mndwi']);
+            return image.addBands([ndvi,mndwi]);
+          }).map(scale)
+            .median()
+            .clip(geometry);
+</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>Similarly, filter the Sentinel-1 data to the AOI for the period of June to September 2016 as above.
+   In addition, filter the s1 image collection to those images that have captured in Interferometric Wide (IW) mode
+    and contain Vertical Transmit and Vertical Receive (VV) and Vertical Transmit and Horizontal Receive polarised bands.
+     Lastly, for each image, select all bands that start with a V and reduce the resulting images to the median image.</p>
+<p>For more information on radar, check out:</p>
+<ul>
+<li>https://www.servirglobal.net/Global/Articles/Article/2674/sar-handbook-comprehensive-methodologies-for-forest-monitoring-and-biomass-estimation</li>
+<li>https://earthdata.nasa.gov/learn/backgrounders/what-is-sar</li>
+<li>https://developers.google.com/earth-engine/tutorials/community/sar-basics</li>
+</ul>
+
+<pre><p><code class="language-js" id = "target2">var s1 = s1.filterBounds(geometry)
+.filterDate(startDate, endDate)
+.filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
+.filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
+.filter(ee.Filter.eq('instrumentMode', 'IW'))
+.select(&quot;V.&quot;)
+.median();
+</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>Create a final composite image with the bands of both the Landsat-8 composite and Sentinel-1 composite.</p>
+<pre><p><code class="language-js" id = "target3">var composite = filtered.addBands(s1).aside(print).clip(geometry);
+</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+<hr>
+
+<p><strong>Step 2: Data preparation continued- preparing the train and test datasets</strong></p>
+<p>The next step is to split this data into a training and testing partition. The training partition is used
+   to fit the model whilst the test data is used to evaluate the accuracy of the model. Here, we use a split
+   of 80% train data and 20% test data. We set the seed to ensure we end up with roughly the same train and
+   test partition when re-running the model.</p>
+<pre><p><code class="language-js" id= "target4">//Stratified random sampling for each class
+var w_table = water.randomColumn({seed: 1});
+var wtraining = w_table.filter(ee.Filter.lt('random', 0.80));
+var wtest = w_table.filter(ee.Filter.gte('random', 0.80));
+
+var tc_table = tree_cover.randomColumn({seed: 1});
+var tctraining = tc_table.filter(ee.Filter.lt('random', 0.80));
+var tctest = tc_table.filter(ee.Filter.gte('random', 0.80));
+
+var bu_table = built_up.randomColumn({seed: 1});
+var butraining = bu_table.filter(ee.Filter.lt('random', 0.80));
+var butest = bu_table.filter(ee.Filter.gte('random', 0.80));
+
+var 0_table = other.randomColumn({seed: 1});
+var otraining = 0_table.filter(ee.Filter.lt('random', 0.80));
+var otest = o_table.filter(ee.Filter.gte('random', 0.80));
+
+//Combine land-cover reference points for training partition
+var training = wtraining.merge(tctraining).merge(butraining).merge(otraining).aside(print, 'training partition');
+var test = wtest.merge(tctest).merge(butest).merge(otest).aside(print, 'test partition');
+var points = training.merge(test).aside(print,'all points');
+</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>Depending on your goal or more specifically, the area that you intend on generalising across
+   determines which is the most suitable way for you to do your sampling. Since we are trying to create
+    our model for a small region, stratified random sampling will suffice.
+    However, if you were trying to generalise across large areas then it is more suitable to use a
+    spatially constrained cross validation technique. This will result in more reliable estimates of accuracy.</p>
+<hr>
+<p><strong>Step 2: Data preparation continued -linking the two datasets, extracting the spectral signatures</strong></p>
+<p>At this point, we have our response (reference points) and explanatory variables (Landsat-8 and Sentinel-1 data) prepared.
+   We can now move on to extracting the spectral signatures at each of the points.
+   Note, the ‘tileScale’ argument may be useful when working with large computations that fail due to computation errors.</p>
+
+<pre><p><code class="language-js" id="target5">var Features = composite.sampleRegions({
+collection: training,
+properties: ['label'],
+scale: 30,
+tileScale:16
+});
+</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<hr>
+<p><strong>Step 3: Model fitting on training data</strong></p>
+<p>We fit a random forest model on the extracted spectral data for the training data partition.
+   We choose a value of 100 for the number of trees since this is the defualt value used in pythons
+    scikit-learn package. Choosing a larger value would increase the number of decision trees and may increase
+     the likelihood that our model overfits to our training data. Simultaneously, selecting too few trees 
+     may result in underfitting our data and therfore less accurate land cover maps.</p>
+<p>if you are interested in using a data-driven approach to determine the optimum number of trees
+  - check out this hyperparameter tuning script within GEE <a href="https://code.earthengine.google.com/3743e0784a6055d812010b0171b53e30?noload=true">link</a></p>
+
+<pre><p><code class="language-js" id="target6">var trainedClassifier = ee.Classifier.smileRandomForest(100)
+.train({
+features: Features,
+classProperty: 'label',
+inputProperties: composite.bandNames()
+});
+</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<hr>
+
+<p><strong>Step 4: Inference for entire AOI</strong></p>
+<pre><code class="language-js">var classified = composite.classify(trainedClassifier);
+</code></pre>
+
+<hr>
+<p><strong>Step 5: Model evaluation on train and test set</strong></p>
+<p>The training accuracy largely overestimates model accuracy since this data has been used to train the model.
+   We, therefore, use a test set (data unseen by the model) to get a more reliable estimate of model accuracy.</p>
+
+<pre><p><code class="language-js" id= "target7">//Train accuracy
+var trainAccuracy = trainedClassifier.confusionMatrix().accuracy();
+print('Train Accuracy', trainAccuracy);
+
+//Test accuracy
+var test = composite.sampleRegions({
+collection: test,
+properties: ['label'],
+scale: 30,
+tileScale: 16
+});
+var Test = test.classify(trainedClassifier);
+print('ConfusionMatrix', Test.errorMatrix('label', 'classification'));
+print('TestAccuracy', Test.errorMatrix('label', 'classification').accuracy());
+print('Kappa Coefficient', Test.errorMatrix('label', 'classification').kappa());
+print('Producers Accuracy', Test.errorMatrix('label', 'classification').producersAccuracy());
+print('Users Accuracy', Test.errorMatrix('label', 'classification').consumersAccuracy());
+</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<hr>
+<p><strong>Visualisation</strong></p>
+<p>Visualising the RGB image, reference points, and classified image</p>
+
+<pre><p><code class="language-js" id="target8">Map.centerObject(points.geometry().bounds(), 13);
+Map.addLayer(composite,rgb_vp, 'Landsat-8 RGB');
+</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<pre><p><code class="language-js" id="target9">showTrainingData();
+function showTrainingData(){
+var colours = ee.List([&quot;darkblue&quot;,&quot;darkgreen&quot;,&quot;yellow&quot;, &quot;orange&quot;]);
+var lc_type = ee.List([&quot;water&quot;, &quot;tree cover&quot;,&quot;built-up&quot;,&quot;other&quot;]);
+var lc_label = ee.List([0, 1, 2, 3]);
+var lc_points = ee.FeatureCollection(
+lc_type.map(function(lc){
+var colour = colours.get(lc_type.indexOf(lc));
+return points.filterMetadata(&quot;label&quot;, &quot;equals&quot;, lc_type.indexOf(lc).add(1))
+.map(function(point){
+return point.set('style', {color: colour, pointShape: &quot;diamond&quot;, pointSize: 3, width: 2, fillColor: &quot;00000000&quot;});
+});
+})).flatten();
+
+Map.addLayer(classified, {min: 0, max: 3, palette: [&quot;darkblue&quot;,&quot;darkgreen&quot;,&quot;yellow&quot;, &quot;orange&quot;]}, 'Classified image', false);
+Map.addLayer(lc_points.style({styleProperty: &quot;style&quot;}), {}, 'TrainingPoints', false);
+}
+</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>If you are interested in Object Based Image Analysis, check out <a href="https://code.earthengine.google.com/7f0f1f333ac8cdad33a8a531ed1cf186">this script</a>. Since objects are used, some spatial context is used, performs slighly better in terms of accuracy and removes salt and pepper effect at the expense of computation.</p>
+<p>If you are interested in Convolutional Neural Networks, check out this <a href="https://developers.google.com/earth-engine/guides/tf_examples">link</a></p>
+<hr>
+<p><strong>Practical 9, part 2: Supervised learning 2: Improving ypur land cover classification.</strong></p>
+<p>Access the complete practical, part 2 script <a href="https://code.earthengine.google.com/13481e041280a29ee0fcda5b5eaf722c?noload=true">here</a></p>
+<p><strong>Learning Objectives</strong></p>
+<p>By the end of this practical you should be able to:</p>
+<ol>
+<li>Understand the role and importance of high-quality training data.</li>
+<li>Use an objective approach (this is experimental) to improve the selection of training data.</li>
+<li>Determine the area of applicability for a model.</li>
+</ol>
+<p><strong>The end product</strong></p>
+<p><img src="/img/7_img3.png" alt=""></p>
+<p><strong>Figure 1:</strong> The area of applicability for a model that discriminated water and non-water pixels at a 10 m resolution for a heterogeneous area near Hartbeespoort Dam, South Africa based on Sentinel-2 imagery.</p>
+<p>The area of applicability concept is based on an experimental concept still under review and has been implemented based on the pre-print version available <a href="https://arxiv.org/abs/2005.07939">here</a>.</p>
+<p>Reference</p>
+<p>Meyer, H. and Pebesma, E., 2020. Predicting into unknown space? Estimating the area of applicability of spatial prediction models. arXiv preprint arXiv:2005.07939.</p>
+<p>Do you have any feedback for this practical? Please complete this quick (2-5 min) survey <a href="https://forms.gle/HKgTJ4twMahg5nbh8">here</a>.</p>
+
+</div>
 
 <div id="sidebar">
 <h3>MENU</h3>
@@ -240,27 +278,20 @@
 </nav>
 <nav class="drop-down-menu">
 <input type="checkbox" class="activate" id="accordion-2" name="accordion-2">
-<label for="accordion-2" class="menu-title">> COURSE APR 2021</label>
-<div class="drop-down">
-<li><a href="">Check again later</a></li>
-</div>
-</nav>
-<nav class="drop-down-menu">
-<input type="checkbox" class="activate" id="accordion-3" name="accordion-3">
-<label for="accordion-3" class="menu-title">> COURSE NOV 2021</label>
+<label for="accordion-2" class="menu-title">> COURSE 2021</label>
 <div class="drop-down">
 <li><a href="1_prac.html">[Prac1] Getting started</a></li>
 <li><a href="2_prac.html">[Prac2] Spectral indices</a></li>
 <li><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
 <li><a href="4_prac.html">[Prac4] Interactive App</a></li>
-<li><a href="5_prac.html">[Prac5] Change analysis</a></li>
-<li class="selected"><a href="6_prac.html">[Prac6] Landcover class</a></li>
-<li><a href="7_prac.html">[Prac7] Time series-Fire</a></li>
-<li><a href="8_prac.html">[Prac8] Species patterns</a></li>
+<li><a href="5_prac.html">[Prac5] Time series-Fire</a></li>
+<li><a href="6_prac.html">[Prac6] Species patterns</a></li>
+<li class="selected"><a href="7_prac.html">[Prac7] Landcover class</a></li>
+<li><a href="8_prac.html">[Prac8] Change analysis</a></li>
+<li><a href="9_prac.html">[Prac9] Your own data</a></li>
 </div>
 </nav>
 <li><a href="10_contact.html">CONTACT US</a></li>
-<li><a href="11_add.html">ADDITIONAL INFO</a></li>
 </nav>
 </ul>
 

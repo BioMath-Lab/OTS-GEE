@@ -22,7 +22,7 @@
 <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
 <p><strong>Practical 1: Getting started with Google Earth Engine: Basic JavaScript rules, create, import, explore and visualising datasets</strong>
 <br>by Sandra MacFadyen @ <a href="https://www0.sun.ac.za/biomath/">https://www0.sun.ac.za/biomath</a>
-<br>Access the completed practical script <a href="https://code.earthengine.google.com/270731fc448018ee9a3ca7f74d59df74">here</a>.
+<br>Access the completed practical script <a href="https://code.earthengine.google.com/71944ef8f7b4274f4934e8a1fd8a8c1f">here</a>.
 <br><br>
 <strong>Learning Objectives</strong>
 <br>By the end of this practical you should be able to:
@@ -344,22 +344,36 @@ and paste that in an email to us <a href="mailto:ots.online.education@gmail.com"
 
 <p><strong>Practical Assignment #1</strong>
 <p><img src="img/1_img18.png" width="450" alt="" title=""/></p>
-<pre><p><code class="javascript" id="target15">// Draw your own geometry for a specific area of interest
+<pre><p><code class="javascript" id="target15">////////////////////////////////////////////////////////////////////////////
+// ---> PRACTICAL 1 EXERCISE <---
+////////////////////////////////////////////////////////////////////////////
+// Draw your own geometry for a specific area of interest
 // Or select a feature from one of GEEs feature collections e.g. a country
+// >>>> HINT: See lines 45-63
 // ..............................................
+
 // Import MOD13Q1.006 Terra Vegetation Indices 16-Day Global 250m
 // Filter by your geometry feature and the year 2018
 // Select the EVI band
+// >>>> HINT: See lines 83-207
 // ..............................................
+
 // Calculate the mean EVI for 2018
+// >>>> HINT: See lines 251
 // ..............................................
+
 // Make your visualisation parameters
+// >>>> HINT: See lines 78-105
 // ..............................................
+
 // Zoom in to a center point on your map
+// >>>> HINT: See lines 52-56
 // ..............................................
+
 // Add you results layer to the map with your visualisation parameters
 // Don't forget to give your new layer a name to display under "Layers"
-// ..............................................</code><button class="btn" id="copy-button" data-clipboard-target="#target15">Copy</button>
+// >>>> HINT: See lines 58-63
+</code><button class="btn" id="copy-button" data-clipboard-target="#target15">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 <hr>
 </div>

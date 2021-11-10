@@ -168,7 +168,12 @@
   
   <pre><p><code class="javascript" id="target6">// Filter NDVI image for January and August, respectively and create NDVI mean composite image
   var NDVI_jan = NDVI.filterDate('2020-01-01', '2020-02-01').median();
-  var NDVI_aug = NDVI.filterDate('2020-08-01', '2020-09-01').median();</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+  var NDVI_aug = NDVI.filterDate('2020-08-01', '2020-09-01').median();
+
+  // Filter RGB imagery for January and August
+  var RGB_jan = s2_ndvi.filterDate('2020-01-01', '2020-02-01').median()
+  var RGB_aug = s2_ndvi.filterDate('2020-08-01', '2020-09-01').median()
+  </code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
   <script>new ClipboardJS('.btn');</script></pre>
   
   <p> As shown in Practical 1, there are lot of different options for creating your own customisable palettes. However, there are also 
@@ -184,11 +189,16 @@
   <p>Now add the seasonal highs and lows to your map:
   
   <pre><p><code class="javascript" id="target8">// Display NDVI results on map
-        Map.centerObject(geometry);
+Map.centerObject(geometry);
+
+// Add layers to the map
+Map.addLayer(RGB_jan, {min:0, max:3000, bands:['B4','B3','B2']}, 'RGB Jan', false);
+Map.addLayer(RGB_aug, {min:0, max:3000, bands:['B4','B3','B2']}, 'RGB Aug', false);
+
         
-  // Add layers to the map
-  Map.addLayer(NDVI_jan, {min:0, max:1, palette: ndvi_pal}, 'NDVI Jan');
-  Map.addLayer(NDVI_aug, {min:0, max:1, palette: ndvi_pal}, 'NDVI Aug');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+// Add layers to the map
+Map.addLayer(NDVI_jan, {min:0, max:1, palette: ndvi_pal}, 'NDVI Jan');
+Map.addLayer(NDVI_aug, {min:0, max:1, palette: ndvi_pal}, 'NDVI Aug');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
   <script>new ClipboardJS('.btn');</script></pre>
   
   <img src="img/3_img7.png" width="650" alt="" title="" />

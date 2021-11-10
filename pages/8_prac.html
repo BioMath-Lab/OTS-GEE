@@ -20,352 +20,551 @@
 
 <div id="content">
 <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
-<p><strong>Practical 8: Species Distribution Modeling</strong>
+<p><strong>Practical 8: Continuous change detection & classification</strong>
 <br>
-Access the completed practical script <a href="https://code.earthengine.google.com/b0464a9cbeecd3d78b541be9150e595c">here</a>.
-<br><br>
+<br>
 <strong>Learning Objectives</strong>
 By the end of this practical you should be able to:
 <br>
 <ol>
-<li>Build an Image of selected environmental covariates</li>
-<li>Extract covariates</li>
-<li>Model fitting</li>
-<li>Discuss the need for model evaluation</li>
+<li>Understand the value of continuity in change detection</li>
+<li>Understand and implement continuous change detection</li>
+<li>Classify a region using bands and regression variables</li>
+<li>Obtain ‘regular’ image and change information</li>
 </ol>
 <hr>
 
-<img src="img/6_img1.png" width="650" alt="" title="" />
+Access the slides here: bit.ly/2R8U5wO
 
-<p><strong>Introduction</strong></p>
+<p><strong>Introduction</strong>
+
+<p>For many land cover change analyses, particularly in forest detection, we have previously relied on annual (or longer interval) land classifications. This includes datasets such as <a href="https://developers.google.com/earth-engine/tutorials/tutorial_forest_02">Hansen Global Forest Change</a> or <a href="https://developers.google.com/earth-engine/datasets/catalog/NASA_MEASURES_GFCC_TC_v3">Global Forest Cover Change</a>. These data are immensely valuable and do a good job at compensating for difficulties in monitoring forests in regions with lots of clouds. However, there are limitations to understanding land cover change, when we only have a few observation epochs. This is where Continuous Change Detection and Classification comes in. Using all available satellite observations, the CCDC algorithm provides a more comprehensive approach to classifying images and detecting change. This practical gives an overview of this.</p>
+
 <br>
-Species Distribution Models are a valuable tool in ecology and conservation, providing us with insights into global change impacts, allowing us to project potential future range shifts in species. Using geo-referenced species localities and environmental predictors we can determine the important environmental conditions for species at their known sites.
-<br>
-<br>
-However, they need to be used carefully and with full understanding of the models used and outputs provided. For example, we may not have a full sample of species localities or not have all of the relevant environmental variables. This means we need to have a strong understanding of the species sampling, biogeography and potentially biotic interactions to accurately predict their distributions. Take a look at <a href="https://damariszurell.github.io/SDM-Intro/" target="_blank">this</a> R tutorial for more information on SDMs. Further information of MaxEnt can be found <a href="https://biodiversityinformatics.amnh.org/open_source/maxent/" target="_blank">here</a>. 
-<br>
-<br>
-SDMs are not a feature commonly used in GEE and therefore the documentation does not have full support that other algorithms or processes may have. Though this has recently changed with the addition of the <a href="https://developers.google.com/earth-engine/apidocs/ee-classifier-amnhmaxent" target="_blank">American Museum of Natural History version of the MaxEnt algorithm</a> as of March 2021. With further use of this platform this is likely to change. The strong potential of GEE in the SDM space is the ability to process large amounts of data very quickly. Additionally, there is a large value in extracting covariate data to complete SDM analyses in other programs. Let's begin...
+Some useful resources to better understand the CCDC approach and implementation in GEE can be found below:
+<ol>
+<li><a href="https://doi.org/10.1016/j.rse.2005.07.013">Souza Jr. et al 2005</a></li>
+<li><a href="http://dx.doi.org/10.1016/j.rse.2014.01.011">Zhu & Woodcock 2014</a></li>
+<li><a href="https://doi.org/10.3389/fclim.2020.576740">Arévalo et al. 2020</a></li>
+<li><a href="https://gee-ccdc-tools.readthedocs.io/en/latest">Documentation for CCDC in GEE</a></li>
+<li><a href="https://parevalo-bu.users.earthengine.app">CCDC in GEE Apps</a></li>
+</ol>
 
 <hr>
+<br> 
+The analysis is broken into two parts. Part 1 addresses applying a classification to any time point in your ImageCollection. Part 2 addresses exporting variables for further analysis.
 
-<p><strong>Import data & Pre-process</strong></p>
+Part 1 relies on two external libraries and shows aspects of the required workflow. I recommend trying the full workflow that relies on the excellent CCDC utilities package alone when running CCDC with your own (<a href="https://gee-ccdc-tools.readthedocs.io/en/latest">Documentation for CCDC in GEE</a>). 
 
-<br>
-<br>
-For this practical we will need two core datasets. Our geo-referenced species localities or presences and our geographic layers of environmental predictor variables. In addition to this we will need a chosen area of interest. Let's start by importing our locality data.
+<p><strong>Part 1:</strong>
+Access the completed practical script <a href="https://code.earthengine.google.com/433c922d32a32098fae7b790b0d8d8e3">here</a>.
 
-<br>We will use data sourced from GBIF (Global Biodiversity Information Facility), which has a massive online collection of freely available biodiversity data. Our species of interest - Bradypus variegatus - is a species commonly used Species Distribution Modeling tutorials. This data has been extracted from the R dismo package. This dataset has already been uploaded as an asset and made publicly available. We load this data in as an asset and then add it to our map.
+<p>The end product for Part 1:</p>
 
-<pre><p><code class="javascript" id="target1">// Locality data //////////////////////////////////////////////
+<img src="img/8_img0.png" width="650" alt="" title="" />
 
-// Presence points of Solanum acuale (extracted from the R Dismo package and uploaded to GEE as an asset)
-// var presences = ee.FeatureCollection("users/jdmwhite/solanum_acuale");
-// Presence points of Bradypus variegatus (extracted from the R Dismo package and uploaded to GEE as an asset)
-var presences = ee.FeatureCollection("users/jdmwhite/bradypus");
-// Add presence points to map
-Map.addLayer(presences, {color: 'red'},'Bradypus presences', false);</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
+<p>Set up your workspace. Start by creating your study region polygon.</p>
+
+<pre><p><code class="javascript" id="target1">/////////////////////////////////
+///// Select your study region //
+/////////////////////////////////
+  
+// Create a polygon/import a featureCollection
+  
+/////////////////////////////////
+///// Set map options ///////////
+/////////////////////////////////
+  
+Map.centerObject(studyRegion, 9);
+  
+/////////////////////////////////
+///// Load extra libraries //////
+/////////////////////////////////
+  
+// The utilities package for ccdc is the best developed of the ccdc api's
+var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
+// the temporal segmentation package does a good job doing some basic ccdc functions
+var temporalSegmentation = require('users/wiell/temporalSegmentation:temporalSegmentation');
+// the palettes package for map outputs
+var palettes = require('users/gena/packages:palettes');</code><button class="btn" id="copy-button" data-clipboard-target="#target1">Copy</button>
 <script>new ClipboardJS('.btn');</script></pre>
 
-<p>Next, we'll define our area of interest (AOI) by loading in the countries dataset and drawing a polygon around it. We want to create a polygon that only includes terrestrial sources. We will use our imported polygon together with the countries database to create our area of interest. We use the intersection() function to ‘clip’ the countries dataset to the polygon. We then combine our new aoi into a single feature using the union() function, which effectively removes the countries borders. Lastly, we add our polygon and aoi to the map.</p>
+<p>Next set up the required parameters for the CCDC analysis and load in the Landsat collection. Plot out the least cloudy image from the Landsat collection, which you can use to create your training data with the point tool.</p>
 
-<pre><p><code class="javascript" id="target2">// Area of interest ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Load in the countries FeatureCollection data
-var countries = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017");
-// Create a polygon.
-var polygon = ee.Geometry.Polygon([
-[-87.14743379727207,-34.736435036461145],[-32.12790254727207,-34.736435036461145],[-32.12790254727207,16.642228542503663],
-[-87.14743379727207,16.642228542503663],[-87.14743379727207,-34.736435036461145]
-]);
+<pre><p><code class="javascript" id="target2">  /////////////////////////////////
+///// Set up parameters /////////
+/////////////////////////////////
   
-// Find the intersection of the polygon and S.American countries
-// Map over the countries and use filterBounds & intersect to clip to our S.American AOI
-var aoi = countries.filterBounds(polygon).map(function(f) {
-    return f.intersection(polygon, 1);//1 refers to the maxError argument
-});
+// Parameters for change detection algorithm
+var changeDetection = {
+  breakpointBands: ['GREEN','RED','NIR','SWIR1','SWIR2','NDFI'], // bands to use for regression
+  tmaskBands: ['GREEN','SWIR2'],
+  lambda: 20/10000, // tuning parameter
+  // minObservations: 6, // observation window
+  // chiSquareProbability: .99, // threshold for change detection
+  // minNumOfYearsScaler: 1.33, // min number of years to apply new fitting
+  // dateFormat: 2,
+  // maxIterations: 25000 // number of runs for LASSO regression convergence
+}
   
-// Combine the countries/polygons into one feature with union
-var aoi = aoi.union();
-Map.addLayer(polygon,{}, "Polygon", false);
-Map.addLayer(aoi, {},"Area of interest", false);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
+// Overall parameters
+var params = {
+  start: '2000-01-01',
+  end: '2020-01-01',
+  ChangeDetection: changeDetection,
+  StudyRegion: studyRegion
+  }
+  
+///////////////////////////////////////////
+///// Import & Pre-Process Landsat Data ///
+///////////////////////////////////////////
+  
+// Filter by date and a location in Brazil
+var filteredLandsat = utils.Inputs.getLandsat() // using the utility package loaded earlier
+      .filterBounds(params.StudyRegion)
+      .map(function(image) {return image.clip(studyRegion)})
+      .filterDate(params.start, params.end)
+  
+print('collection size:',filteredLandsat.size())
+  
+// Investigate landsat data
+// Add the image with the least cloud to the map
+Map.addLayer(filteredLandsat.sort('CLOUD_COVER').first(), 
+                {bands: ['RED', 'GREEN', 'BLUE'],min: 0,max: 0.3, gamma: 1.2}, 'Least cloudy image', false);
+// Save the date of the image, which we use for creating a training data set
+var img_date = ee.Date(filteredLandsat.sort('CLOUD_COVER').first().get('system:time_start')).format("yyyy-MM-dd").aside(print, 'Date cloud free image');
+  
+// At this point you can create your training data
+// Use the point tool to create classes of data based on the cloudless image
+  
+// Add our landsat dataset to the params dictionary
+params.ChangeDetection['collection'] = filteredLandsat
+print('Parameters:', params);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
   <script>new ClipboardJS('.btn');</script></pre>
 
-<p>We then import the environmental covariates. The first group of covariates is from the WorldClim dataset. The WorldClim data provides average bioclimatic conditions for the entire globe between the period 1960-1991 and is commonly used in SDMs. Secondly, we import SRTM for terrain data. Lastly, we import the eco-regions dataset. We then merge our full covariate dataset together, using the addBands() function. At the same time, we can now clip this to our aoi. Using this approach you can add in extra bands from any other dataset to your covariates.</p>
-  
-<pre><p><code class="javascript" id="target3">// Environmental data ////////////////////////////////////////////////////////////////////////////////////////////////////
+<img src="img/8_img1.png" width="650" alt="" title="" />
 
-// Load in bioclimatic variables from WorldClim 
-// Based on the R Dismo tutorials - these are the bioclim variables typically used for Bradypus distributions
-var worldclim = ee.Image("WORLDCLIM/V1/BIO").select(['bio01','bio05','bio06','bio07','bio08','bio12','bio16','bio17']).rename(
-                                ['Ann_mean_T','Max_T_warmest_month','Min_T_coldest_month',
-                                'T_Ann_range','Mean_T_wettest_quarter','Ann_P',
-                                'P_wettest_quarter','P_driest_quarter']);
-  
-// Load in terrain data
-var elev = ee.Image("USGS/SRTMGL1_003");
-  
-// Load in Eco-regions
-var ecoregions =  ee.FeatureCollection("RESOLVE/ECOREGIONS/2017").filterBounds(aoi) // filter this to our area of interest
-    .reduceToImage({ // now run a vector to raster conversion
-      properties: ['ECO_ID'], // select the band of interest
-      reducer: ee.Reducer.first() // run a first() reducer - there is no overlap so this just takes the first value
-  }).select('first').rename('ECO_ID'); // the band is named 'first', so rename to ECO_ID
-  
-// Map.addLayer(ecoregions, {min: 439, max: 617}, 'Ecoregions', false);
-  
-// We now want to merge our full environmental covariate dataset together, using addBands()
-// At the same time we can now clip it to our area of interest
-var vars = worldclim.addBands(elev).addBands(ecoregions).clip(aoi);
-// Using this method, you can add in extra bands to your predictor variable from any Image/ImageCollection
-print('Check all covariates:', vars);
-  
-// NOTE // 
-// At this point it is valuable to calculate a correlation matrix and select only variables 
-// that are uncorrelated below a certain threshold.
-// For GEE script on this, see https://code.earthengine.google.com/27557ebe40e549f604ed1005e047b75a</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
-  <script>new ClipboardJS('.btn');</script></pre>
+<p>Now that we have defined our parameters, loaded in and pre-processed the landsat imagery, the CCDC alogrithm can be easily run. Using the temporalSegmentation package, you can chart out the CCDC segments for a specified point (i.e. pixel) and observe the break points detected.</p>
 
-<p><strong>Further pre-processing</strong></p>
-
-<br>
-<br>
-We now want to create pseudo-absence points, merge this together with our presence points and provide a binary presence property to each observation. The first step is to make sure all of our presence points are within our region. We then add 1 to all presence localilities. We then need to create our random pseudo-absence points and add 0 to each one. We create the same number of pseudo-absence points as there are presences, but this may depend on which model you are training your data on. Note that the generation of pseudo-absence points has a lot of literature related to it and should be carefully considered before running any SDM. View <a href="https://doi.org/10.1111/j.2041-210X.2011.00172.x" target="_blank">this</a> article for more information on pseudo-absences in SDMs.
-<br>
-<br>
-Lastly, we merge the datasets together to give a single FeatureCollection of all points.
-
-<pre><p><code class="javascript" id="target4">// Locality data //
-
-// Make sure all of the presence points are within our AOI
-var filtered_locs = presences.filterBounds(aoi);
-// How many presence points do we have?
-print('No. of localities:', filtered_locs.size());
+<pre><p><code class="javascript" id="target3">///////////////////////////////////////////
+///// Run CCDC Algorithm //////////////////
+///////////////////////////////////////////
   
-//add a presence property to each feature i.e. a value of 1 to represent presence
-var Presence = filtered_locs.map(function(feature){
-    return feature.set('Presence', 1);
-  });
+var results = ee.Algorithms.TemporalSegmentation.Ccdc(params.ChangeDetection)
+print('CCDC results:',results);
   
-//create random pseudo-absence points and add 0 value to the presence property for absence
-// check the Docs for the randomPoints function; requires region, number of points to generate & a seed
-var pAbsencePoints = ee.FeatureCollection.randomPoints(aoi, filtered_locs.size(), 42).map(function(feature){
-  return feature.set('Presence', 0); // we then add 0s to all pseudo-absences
-  });
-// You need to be careful with how you chose your pseudo-absences...
+// Add the harmonic regression segments to the chart
+// Drop a point within your study region to display the chart
   
-  
-// Add pseudo-absence points to the map
-Map.addLayer(pAbsencePoints, {color: "gray"}, "Pseudo-absence points", false);
-  
-//Merge the presence and pseudo-absence points into a single feature
-var points = Presence.merge(pAbsencePoints);
-print('Check the full points dataset:', points);</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
-    <script>new ClipboardJS('.btn');</script></pre>
-
-<img src="img/6_img2.png" width="650" alt="" title="" />
-
-<p>For later model evaluation, it is important to have a set of data for ‘training’ the model and another set of data for ‘testing’ the model. We do this by adding in a random column and filtering the dataset based on these new random numbers, selecting 80% of the data for training and 20% for testing.</p>
-
-<pre><p><code class="javascript" id="target5">// For later model evaluation, it is important to have a set of data for 'training' the 
-// model and another set of data for 'testing' the model
-  
-// To do this, we will split the data into 80% for training and 20% for testing
-// Add a random column by default named 'random'
-var new_table = points.randomColumn({seed: 42}); 
-var training = new_table.filter(ee.Filter.lt('random', 0.80));
-// print("Check training data:", training);
-var test = new_table.filter(ee.Filter.gte('random', 0.80));
-// print("Check test data:", test);</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+temporalSegmentation.chartPoint({
+      image: results,
+      point: geometry,
+      bandName: 'NDFI',
+      collection: filteredLandsat,
+      callback: function (chart) {
+        print(chart)
+      }
+})</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
       <script>new ClipboardJS('.btn');</script></pre>
 
-<p>The last step in the data processing is to extract the values of each band of our predictor variables for each point in our dataset. We do this using the sampleRegions() function.</p>
+<img src="img/8_img2.png" width="650" alt="" title="" />
 
-<pre><p><code class="javascript" id="target6">// Extract the environmental variable values for each point
-// Sampling using sampleRegions()
-var trainingData = vars.sampleRegions({
-    collection: training,
-    properties: ['Presence'],
-    geometries: true,
-    scale: 1000
-});
-print('Check sampled data:', trainingData.limit(5));</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+<p>In this chart, the CCDC algorithm suggests there was a change in land cover around early 2005. The y-axis shows changes in NDFI.</p>
+
+<p>At this point, it is a good idea to save the CCDC output to your asset. This will help further down the line, by saving memory and will make your code run a lot more smoothly. Once export, you can comment out this code and load the image back in from your assets.</p>
+
+<pre><p><code class="javascript" id="target4">///////////////////////////////////////////////////////
+/// Only run this bit once & save results to ASSETS ///
+///////////////////////////////////////////////////////
+  
+// var segments = temporalSegmentation.Segments(results) // Create temporal segments
+  
+// This is the image you will use for the rest of Part 1
+  
+// // Export as asset. Include same options as for regular exports.
+// // Skip the image and pyramidingPolicy though, which gets defaulted.
+// segments.toAsset({
+//   description: 'ccdc_segments',
+//   region: studyRegion,
+//   scale: 30,
+//   crs: 'EPSG:4326'
+// })
+  
+// This is the image you will use for Part 2
+  
+// Export.image.toAsset({
+//   image: results,
+//   scale: 30,
+//   description: 'ccdc_L_raw',
+//   maxPixels: 1e13,
+//   region: studyRegion,
+//   pyramidingPolicy: {
+//   '.default': 'sample'
+//   }
+// })
+  
+// Load the CCDC results back in
+var segmentsImage = ee.Image('users/jdmwhite/ccdc_segments') // Load CCDC asset
+var segments = temporalSegmentation.Segments(segmentsImage) // Create temporal segments</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
         <script>new ClipboardJS('.btn');</script></pre>
 
-<p>At this point, many users may want to export the locality data, together with the covariate data to use it in a different program where there is more support for SDMs. So we will export the data before continuing. You can export it as a shapefile or csv.</p>
+<p>Once the CCDC image is loaded back in, we can now prepare the training and testing points for classification. The training points require a land cover type label and a date, which corresponds to the image the data was collected from.</p>
 
-<pre><p><code class="javascript" id="target7">Export.table.toDrive({collection: trainingData, 
-  description: 'Bradypus_sampled',
-  fileFormat: 'SHP'});
-</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
-          <script>new ClipboardJS('.btn');</script></pre>
-
-<hr>
-<p><strong>Analysis</strong></p>
-<br>
-<p>There are several different options for classifiers in GEE, which can be viewed in the Docs tab by typing ee.Classifier. We will be using the amnhMaxent() and smileRandomForest() functions as they allow for variable importance values to be extracted (which is only recently available for MaxEnt models in GEE). There are several options one can add to fine-tune the model to your own specifications. For the random forest function, the only argument that is required is the number of decision trees to use. We select the output mode of probability. However, for later model evaluation, you will need to select classification, which is not available for MaxEnt.</p>
-<br>
-<p><strong>MaxEnt Model</strong></p>
-
-<pre><p><code class="javascript" id="target8">// We will now fit a Classifier, using Maxent
-var MXmodel = ee.Classifier.amnhMaxent()
-                              .setOutputMode('PROBABILITY')
-                              .train({
-                                features: trainingData, 
-                                classProperty: 'Presence', 
-                                inputProperties: vars.bandNames(),
-                              });
-print(MXmodel, 'model input'); // Take a look at the model inputs
+<pre><p><code class="javascript" id="target5">///////////////////////////////////////////////////////
+/// Prepare data for classification ///////////////////
+///////////////////////////////////////////////////////
   
-// Take a look at the model output
-// This shows us the relative contributions of covariates to Bradypus distribution
-// and also gives us the overall AUC of the model
-print(MXmodel.explain(), 'model output');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
-          <script>new ClipboardJS('.btn');</script></pre>
-
-<p><strong>MaxEnt Visualisation</strong></p>
-
-<p>We will then extract the variable importance data and add it to a chart. To pull the information from the model, we use explain() and then get() to pull the specific information we are interested in.
-
-We then add this to a chart for visualization. The MaxEnt in GEE uses the percentage contributions nromalized to percentages. See the MaxEnt tutorial for more information on how this is calculated.</p>
-          
-<pre><p><code class="javascript" id="target10">// Variable importance as contributions
-var MXimportance = MXmodel.explain().aside(print,'explain MX model')
-                    .get('Contributions').aside(print, 'Check MX model importance');
+// Prepare the training point data
+// Convert the ee.Geometry.Multipoint to FeatureCollections and set type & date values
   
-// Convert the importance values into a feature for plotting
-var MXimportance_plot = ee.FeatureCollection(ee.Feature(null, ee.Dictionary(MXimportance)));
-print('Check importance values:', MXimportance_plot);
+// Forest
+var forest = ee.FeatureCollection(forest.coordinates().map(function(p) {
+    var type = ee.Feature(ee.Geometry.Point(p), {type: 1}) // 1 for forest
+    var date_type = type.set('date', img_date)
+    return date_type}))
+  
+// Other
+var other = ee.FeatureCollection(other.coordinates().map(function(p) {
+    var type = ee.Feature(ee.Geometry.Point(p), {type: 0}) // 0 for other
+    var date_type = type.set('date', img_date)
+    return date_type}))
+  
+//Stratified random sampling for each class
+// First for forest
+var forest_table = forest.randomColumn({seed: 16});
+var forest_training = forest_table.filter(ee.Filter.lt('random', 0.80));
+var forest_test = forest_table.filter(ee.Filter.gte('random', 0.80));
+  
+// Next for other
+var other_table = other.randomColumn({seed: 16});
+var other_training = other_table.filter(ee.Filter.lt('random', 0.80));
+var other_test = other_table.filter(ee.Filter.gte('random', 0.80));
+  
+//Combine our forest & other reference points for our training & test data
+var trainingPoints = forest_training.merge(other_training);
+var testingPoints = forest_test.merge(other_test).aside(print, 'test data');
+  
+// Function to remove the random column, as it isn't needed for later
+var removeProperty = function(feat, property) {
+    var properties = feat.propertyNames()
+    var selectProperties = properties.filter(ee.Filter.neq('item', property))
+    return feat.select(selectProperties)
+}
+  
+// remove the random property in each feature
+var trainingPoints = trainingPoints.map(function(feat) {
+    return removeProperty(feat, 'random')
+})
+print(trainingPoints, 'training points')
+  
+  var testingPoints = testingPoints.map(function(feat) {
+    return removeProperty(feat, 'random')
+  })</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+          <script>new ClipboardJS('.btn');</script></pre>
+  
+<p>We now want to sampe the pixels for each point in the training and testing data. First use the mapSegment function to extract information for each temporal segment. Then select the images (by date) that you wish to classify. Lastly, sample the data for both training and testing datasets.</p>
 
-// Plot the resulting variable importance in a bar chart
-var chart =
-ui.Chart.feature.byProperty(MXimportance_plot)
-.setChartType('ColumnChart')
-.setOptions({
-title: 'Maxent Variable Importance',
-legend: {position: 'none'},
-hAxis: {title: 'Covariates'},
-vAxis: {title: 'Importance (%)'}
+<pre><p><code class="javascript" id="target6">// Function to extract an image from a segment. Used when sampling and classifying.
+// Provide whatever information you think helps the classification in this image
+var mapSegment = function(segment) {
+    var image = segment.toImage() 
+    var rmse = image.select('.*_rmse')
+    var ndfiCoefs = segment.coefs('NDFI')
+    var fit = segment.fit()
+    return ee.Image([rmse, ndfiCoefs, fit])
+}
+  
+// Create regression for two dates to provide quick feedback on classification results
+var Segment_2005 = segments.findByDate('2001-01-01', 'closest') // selects image closest to this date
+var Image_2005 = mapSegment(Segment_2005)
+  
+var Segment_2015 = segments.findByDate('2015-01-01', 'closest') // selects image closest to this date
+var Image_2015 = mapSegment(Segment_2015)
+print('test image:', Image_2015);
+  
+// create the training data by overlaying the ref data on the segments
+var trainingData = segments.sample(trainingPoints, mapSegment, 30) // select scale
+print('trainingData', trainingData)
+  
+// create the training data by overlaying the ref data on the segments
+var testingData = segments.sample(testingPoints, mapSegment, 30) // select scale
+// print('testingData', trainingData)</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+            <script>new ClipboardJS('.btn');</script></pre>
+
+<p>Now we can train our classifier using a Random Forest. Once the classifier is trained, classify both extracted images. Next you can run the model evaluation.</p>
+
+<pre><p><code class="javascript" id="target7">///////////////////////////////////////////////////////
+/// Classify a single image ///////////////////////////
+///////////////////////////////////////////////////////
+  
+var classifier = ee.Classifier.smileRandomForest(50)
+    .train({
+    features: trainingData,
+    classProperty: 'type'
 });
-print(chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+  
+var testClassification_2005 = Image_2005
+    .classify(classifier.setOutputMode('CLASSIFICATION'))
+print(testClassification_2005, 'testClassification 2005');
+  
+var testClassification_2015 = Image_2015
+    .classify(classifier.setOutputMode('CLASSIFICATION'))
+// print(testClassification_2015, 'testClassification 2015');
+  
+///////////////////////////////////////////////////////
+/// Model Evaluation //////////////////////////////////
+///////////////////////////////////////////////////////
+  
+//Test accuracy
+var Test = testingData.classify(classifier);
+print('ConfusionMatrix', Test.errorMatrix('type', 'classification'));
+print('TestAccuracy', Test.errorMatrix('type', 'classification').accuracy());
+print('Kappa Coefficient', Test.errorMatrix('type', 'classification').kappa());
+print('Producers Accuracy', Test.errorMatrix('type', 'classification').producersAccuracy());
+print('Users Accuracy', Test.errorMatrix('type', 'classification').consumersAccuracy());</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
               <script>new ClipboardJS('.btn');</script></pre>
 
-<img src="img/6_img3.png" width="650" alt="" title="" />
+<p>The final step in Part 1, is to visualise the images and calculate a simple binary change from the two images (2015 minus 2005). We will add layers for RGB and NDFI and then add the classified layers.</p>
 
-
-<p>This is a simple step. We classify or predict the output of the model, based on selected predictor variables to find our probability of species occurrence. In this case, we use the full suite of variables used in the original model classification. You can save this as an asset and load it back in to save on computation.</p>
-
-<pre><p><code class="javascript" id="target11">// Run the prediction
-var MXprediction = vars.classify(MXmodel);
+<pre><p><code class="javascript" id="target8">///////////////////////////////////////////////////////
+/// Visualisation /////////////////////////////////////
+///////////////////////////////////////////////////////
   
-// Export the image to an Earth Engine asset.
-Export.image.toAsset({
-    image: MXprediction,
-    description: 'MX_prediction',
-    scale: 30,
-    region: aoi
-  });
+// Creat a palette for the NDFI layer
+var palette = palettes.crameri.bamako[10].reverse();
   
-// var MXprediction = ee.Image('users/jdmwhite/MX_prediction');</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+// Add the layers to the map
+// RGB images
+Map.addLayer(Image_2005, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2005 RGB', false)
+Map.addLayer(Image_2015, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2015 RGB', false)
+// NDFI layers
+Map.addLayer(Image_2005, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2005 NDFI', false)
+Map.addLayer(Image_2015, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2015 NDFI', false)
+// Classifications
+Map.addLayer(testClassification_2005, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2005', false)  
+Map.addLayer(testClassification_2015, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2015', false)  
+  
+/////////////////////////////
+// Simple Binary Change /////
+/////////////////////////////
+  
+// Subtract the 2015 classification from the 2005 classification
+var coverChange = testClassification_2015.subtract(testClassification_2005);
+  
+// Add the layer to the map. Red = loss; Grey = no change; Green = gain
+Map.addLayer(coverChange,{palette: ['red','grey','green'], min: -1, max: 1},'Forest Cover Change 2005-2015',false);
+  
+// Let's create a chart of the area of each class
+var labels =[ 'gain','no change','loss' ];
+var areaClass = coverChange.eq([1, 0, -1]).rename(labels);
+// Calculate the area for each pixel
+var areaEstimate = areaClass.multiply(ee.Image.pixelArea()).divide(1e6);
+  
+// Set up the chart
+var chart = ui.Chart.image.regions({
+    image: areaEstimate,
+    regions: studyRegion,
+    reducer: ee.Reducer.sum(),
+    scale: 1000,
+  }).setChartType('PieChart').setOptions({
+    width: 250,
+    height: 350,
+    title: 'Area by class (sqkm)',
+    // is3D: true,
+    colors: ['green','red','grey'],
+});
+print(chart);
+
+////////////////////////////
+////// legend for classes //
+////////////////////////////
+  
+// See: https://mygeoblog.com/2016/12/09/add-a-legend-to-to-your-gee-map/
+  
+// set position of panel
+var legend = ui.Panel({
+    style: {
+      position: 'bottom-left',
+      padding: '8px 15px'
+    }
+});
+   
+// Create legend title
+var legendTitle = ui.Label({
+    value: 'Land Cover Classes',
+    style: {
+      fontWeight: 'bold',
+      fontSize: '18px',
+      margin: '0 0 4px 0',
+      padding: '0'
+      }
+});
+   
+// Add the title to the panel
+legend.add(legendTitle);
+   
+// Creates and styles 1 row of the legend.
+var makeRow = function(color, name) {
+   
+  // Create the label that is actually the colored box.
+        var colorBox = ui.Label({
+          style: {
+            backgroundColor: '#' + color,
+            // Use padding to give the box height and width.
+            padding: '8px',
+            margin: '0 0 4px 0'
+          }
+        });
+   
+  // Create the label filled with the description text.
+        var description = ui.Label({
+          value: name,
+          style: {margin: '0 0 4px 6px'}
+        });
+   
+  // return the panel
+        return ui.Panel({
+          widgets: [colorBox, description],
+          layout: ui.Panel.Layout.Flow('horizontal')
+        });
+};
+   
+//  Palette with the colors
+var palette =['00404D','FFE599'];
+   
+// name of the legend
+var names = ['Forest','Other'];
+   
+// Add color and names
+for (var i = 0; i < 2; i++) {
+    legend.add(makeRow(palette[i], names[i]));
+}  
+   
+// add legend to map
+Map.add(legend);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
                 <script>new ClipboardJS('.btn');</script></pre>
 
-<p>First we will load in a custom palette for the visualization. Next step is to add our predicted species occurrence to our map.</p>
+<img src="img/8_img3.png" width="650" alt="" title="" />
 
-<pre><p><code class="javascript" id="target11">// Add in custom palette
-var palettes = require('users/gena/packages:palettes');
-var palette_mag = palettes.matplotlib.magma[7];
+<p>The RGB images.</p>
+
+<img src="img/8_img4.png" width="650" alt="" title="" />
+
+<p>The NDFI images (darker pixels have a higher NDFI value).</p>
+
+<img src="img/8_img5.png" width="650" alt="" title="" />
+
+<p>The classified images.</p>
+
+<img src="img/8_img6.png" width="650" alt="" title="" />
+
+<p>The binary change image, showing losses, gains and no change in forest cover.</p>
+
+<p>Note: this is a very basic approach to area estimation and recent literature suggests that biases due to classification errors may limit this approach. For more information on alternative approaches, read the Arévalo et al. 2020 paper and see https://area2.readthedocs.io/en/latest/overview.html</p>
+
+<hr>
+
+<p><strong>Part 2:</strong>
+Access the completed practical script <a href="https://code.earthengine.google.com/7de4528990ac9a63bb1f9dc40e8e2c70">here</a>.
+
+<p>The end product for Part 2:</p>
+
+<img src="img/8_img11.png" width="650" alt="" title="" />
+
+<p>For Part 2, start in a similar way by setting up your map options and loading the additional libraries. This time we will only use the CCDC utilities package.</p>
+
+<pre><p><code class="javascript" id="target9">/////////////////////////////////
+///// Set map options ///////////
+/////////////////////////////////
   
-Map.addLayer(MXprediction, {bands: 'probability', min: 0, max: 1, palette: palette_mag},
-  'Probability of occurence (MaxEnt)', false);
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
-                  <script>new ClipboardJS('.btn');</script></pre>
-
-<img src="img/6_img4.png" width="650" alt="" title="" />
-
-
-<p>In many cases, you will not rely on a single model and it may be preferable to use many models and find an average over several models. A short example of how to do this, is to produce a new model - this time using Random Forest - and finding the mean over our two predicted classifications.
-
-First we classify the Random Forest model. We then create a new ImageCollection of the two SDM models, before finding the mean of the two bands and then adding the ensemble prediction to the map.</p>                  
-
-<p><strong>Random Forest Model & Visualisation</strong></p>
-
-<p>The next block of code essentially repeats the MaxEnt approach given above.</p>
-
-<pre><p><code class="javascript" id="target12">// We need to specificy the number of trees required; we'll use 100 trees, which can be a good balance
-// between under/over-fitting
-var RFmodel = ee.Classifier.smileRandomForest({numberOfTrees: 100})
-                              .setOutputMode('PROBABILITY') 
-                              // .setOutputMode('CLASSIFICATION') 
-                              .train({
-                                features: trainingData, 
-                                classProperty: 'Presence', 
-                                inputProperties: vars.bandNames(),
-                              });
-print("Check model output:", RFmodel);
-
-// Variable importance as Gini index
-var RFimportance = RFmodel.explain().aside(print,'explain model')
-                    .get('importance').aside(print, 'Check model importance');
+Map.centerObject(studyRegion, 9);
   
-// Convert the importance values into a feature for plotting
-var RFimportance_plot = ee.FeatureCollection(ee.Feature(null, ee.Dictionary(RFimportance)));
-print('Check importance values:', RFimportance_plot);
+/////////////////////////////////
+///// Load extra libraries //////
+/////////////////////////////////
   
-// Plot the resulting variable importance in a bar chart
-var chart =
-  ui.Chart.feature.byProperty(RFimportance_plot)
-  .setChartType('ColumnChart')
-  .setOptions({
-  title: 'Random Forest Variable Importance',
-  legend: {position: 'none'},
-  hAxis: {title: 'Covariates'},
-  vAxis: {title: 'Importance'}
-  });
-print(chart);
+// The utilities package for ccdc is the best developed of the ccdc api's
+var utils = require('users/parevalo_bu/gee-ccdc-tools:ccdcUtilities/api')
+// the palettes package for map outputs
+var palettes = require('users/gena/packages:palettes');</code><button class="btn" id="copy-button" data-clipboard-target="#target9">Copy</button>
+<script>new ClipboardJS('.btn');</script></pre>
+
+<p>Now import your CCDC image ('results') from Part 1 that were exported to your assets. There is a problem now... the CCDC image is stored as an array. This is done because before starting, we do not know the length of each variable calculated by the CCDC algorithm. Some have many segments, some hav few. This means we need to convert it to a 'regular' or 'synthetic' EE image. First create a list of the bands you are interested in, followed by the max. number of segments you are expecting. Lastly, run the buildCcdImage function, which will perform the conversion for you.</p>
+
+<pre><p><code class="javascript" id="target10">///////////////////////////////////////////
+///// Import Data /////////////////////////
+///////////////////////////////////////////
   
-// Classify the image with the same bands used for training.
-var RFprediction = vars.classify(RFmodel);
+// Load the CCDC results back in
+var results = ee.Image("users/jdmwhite/ccdc_Rondonia_example")
   
-// Export the image to an Earth Engine asset.
-Export.image.toAsset({
-    image: RFprediction,
-    description: 'RF_prediction',
-    scale: 30,
-    region: aoi
-  });
+///////////////////////////////////////////
+///// Process /////////////////////////////
+///////////////////////////////////////////
   
-// Load the predicted SDM image
-// var RFprediction = ee.Image('users/jdmwhite/RF_prediction') 
+// Spectral band names. This list of all the bands we are interested in
+var BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2']
   
-// Display the predicted probability of occurence results.
-Map.addLayer(RFprediction, {palette: palette_mag},'Probability of occurence (RF)', false);</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
-                    <script>new ClipboardJS('.btn');</script></pre>
+// Names of the temporal segments and the number. There are not likely to be more than 
+// 10 segments for each pixel
+var SEGS = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10"]
+  
+// Obtain CCDC results in 'regular' ee.Image format
+var ccdImage = utils.CCDC.buildCcdImage(results, SEGS.length, BANDS)
+print('ccdImage:',ccdImage);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
+  <script>new ClipboardJS('.btn');</script></pre>
 
-<img src="img/6_img5.png" width="650" alt="" title="" />
+<p>We now run the filterMag function, which extracts three bands from the 'synthetic' image. This includes the time of the biggest break (tBreak), the total number of breaks (numTbreak) and the magnitude of the biggest break (MAG). Select a band to use (as different bands may produce different segmentation) and the number of segments to extract and ensure that your dates are correctly formatted.</p>  
 
-<img src="img/6_img6.png" width="650" alt="" title="" />
+<pre><p><code class="javascript" id="target11">// Convert the date to a format required
+  var changeStart = '1999-01-01'
+  var changeEnd = '2020-01-01'
+  var startParams = {inputFormat: 3, inputDate: changeStart, outputFormat: 1}
+  var endParams = {inputFormat: 3, inputDate: changeEnd, outputFormat: 1}
+  var formattedStart = utils.Dates.convertDate(startParams).aside(print)
+  var formattedEnd = utils.Dates.convertDate(endParams).aside(print)
+  
+  // Run the filterMag function from the utils package
+  // This extracts information on the time of the biggest break (tBreak)
+  // the magnitude of the biggest break (MAG) and the total number of breaks (numTbreak)
+  var filteredChanges = utils.CCDC.filterMag(ccdImage, formattedStart, formattedEnd, 'SWIR1', SEGS)
+  print('filterChanges:',filteredChanges);</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+    <script>new ClipboardJS('.btn');</script></pre>
+  
+<p>Now visualise the different images and run a quick histogram to see the distribution of the major change dates.</p>
 
-<p><strong>Ensemble Visualisation</strong></p>
-
-<p>Find the mean classified values for the two SDM approaches</p>
-
-<pre><p><code class="javascript" id="target13">var collectionFromImages = ee.ImageCollection.fromImages(
-  [ee.Image(RFprediction), ee.Image(MXprediction.select('probability').rename('classification'))]);
-print('Check collectionFromImages:', collectionFromImages);
-
-var ensemble_prediction = collectionFromImages.mean()
-print('ensemble',ensemble_prediction);
-
-Map.addLayer(ensemble_prediction, {palette: palette_mag},'Probability of occurence (ensemble)', false);
-</code><button class="btn" id="copy-button" data-clipboard-target="#target13">Copy</button>
-                      <script>new ClipboardJS('.btn');</script></pre>
-
-<img src="img/6_img1.png" width="650" alt="" title="" />
-
-<p>A useful extra step is to add a legend to aid our visualisation. This needs to be coded from scratch and can look rather complicated. Be aware that to customise this code for your purpose, there are only a few arguments you may need to change, which have comments next to them. This includes the min and max values, the specific palette of choice, the legend title and lastly the legend position. This legend will work best in an interactive app scenario, as it is not straightforward to export it.</p>
-         
-<pre><p><code class="javascript" id="target14">// Styling for the legend title.
-  var LEGEND_TITLE_STYLE = {
+<pre><p><code class="javascript" id="target12">///////////////////////////////////////////
+///// Visualisation ///////////////////////
+///////////////////////////////////////////
+  
+// A chosen palette
+var change_date_palette = palettes.matplotlib.plasma[7];
+var mag_palette = palettes.colorbrewer.PuOr[7];
+var num_breaks_palette = palettes.matplotlib.viridis[7];
+  
+// The time of break
+Map.addLayer(filteredChanges.select('tBreak'), {min: 1999, max: 2020, palette: change_date_palette}, 'Change date');
+// The magnitude of break
+Map.addLayer(filteredChanges.select('MAG'), {min: -0.2, max: 0.2, palette: mag_palette}, 'Magnitude');
+// The number of breaks
+Map.addLayer(filteredChanges.select('numTbreak'), {min: 1, max: 9, palette: num_breaks_palette}, 'Number of breaks');
+  
+// Histogram of Change date
+// Make sure you have your original study region defined
+var hist = ui.Chart.image.histogram({
+    image:filteredChanges.select('tBreak'),
+    region:studyRegion,
+    minBucketWidth: 1,
+    scale: 1000,
+})
+print(hist);
+  
+// Add in legend for aid in visualisation
+  
+///////// tBreak
+  
+// Styling for the legend title.
+var LEGEND_TITLE_STYLE = {
     fontSize: '16px',
     // fontWeight: 'bold',
     stretch: 'horizontal',
@@ -373,7 +572,7 @@ Map.addLayer(ensemble_prediction, {palette: palette_mag},'Probability of occuren
     margin: '4px',
   };
   
-  function ColorBar(palette) {
+function ColorBar(palette) {
     return ui.Thumbnail({
       image: ee.Image.pixelLonLat().select(0),
       params: {
@@ -382,90 +581,54 @@ Map.addLayer(ensemble_prediction, {palette: palette_mag},'Probability of occuren
         format: 'png',
         min: 0, // change min value
         max: 1, // change max value
-        palette: palette_mag, // chose the correct palette
+        palette: change_date_palette, // chose the correct palette
       },
       style: {stretch: 'horizontal', margin: '0px 8px'},
     });
-  }
+}
   
-  // Returns our labeled legend, with a color bar and three labels representing
-  // the minimum, middle, and maximum values.
-  function makeLegend() {
+// Returns our labeled legend, with a color bar and three labels representing
+// the minimum, middle, and maximum values.
+function makeLegend() {
     var labelPanel = ui.Panel(
-        [ui.Label('0', {margin: '4px 8px'}), // change min label here
+        [ui.Label('1999', {margin: '4px 8px'}), // change min label here
         ui.Label('',{margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
-        ui.Label('1', {margin: '4px 8px'})], // change max label here
+        ui.Label('2020', {margin: '4px 8px'})], // change max label here
         ui.Panel.Layout.flow('horizontal'));
-    return ui.Panel([ColorBar(palette_mag.palette), labelPanel]);
-  }
+    return ui.Panel([ColorBar(change_date_palette.palette), labelPanel]);
+}
   
-  // Assemble the legend panel.
-  Map.add(ui.Panel(
+// Assemble the legend panel.
+Map.add(ui.Panel(
       [
-        ui.Label('Probability of occurrence', LEGEND_TITLE_STYLE), makeLegend() // change title here
+        ui.Label('Change Date', LEGEND_TITLE_STYLE), makeLegend() // change title here
         ],
       ui.Panel.Layout.flow('vertical'),
-      {width: '230px', position: 'bottom-center'})); // change location here to chose where to put legend
-  </code><button class="btn" id="copy-button" data-clipboard-target="#target14">Copy</button>
-                      <script>new ClipboardJS('.btn');</script></pre>
+      {width: '230px', position: 'bottom-left'})); // change location here to chose where to put legend</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
+    <script>new ClipboardJS('.btn');</script></pre>
 
-<p>We can also export our SDM prediction Image as a PNG. Do to this, we use the getThumbURL() function. To increase the resolution of this image, change the dimensions argument for the width. The height will be automatically calibrated. This produces a url for a PNG thumbnail, which can then be downloaded to your computer.</p>
-
-<pre><p><code class="javascript" id="target15">// Specify region by your polygon, define the chosen palette & set width size (height adjusts automatically).
-  var thumbnail = MXprediction.select('probability').getThumbURL({
-    palette: palette_mag,
-    dimensions: 1000, // change dimensions here for a higher res image
-    region: polygon,
-    format: 'png'
-  });
-  print('Output image:', thumbnail);</code><button class="btn" id="copy-button" data-clipboard-target="#target15">Copy</button>
-                      <script>new ClipboardJS('.btn');</script></pre>
-
-<p><strong>Model Evaluation</strong></p>
-
-<p>An important last step in all classification modelling is to determine the accuracy of the probability of occurrence or presence/absence map. There are several methods available to produce metrics on model (in)accuracy. The code for this has been included here, so as to produce the a full workflow for GEE classification. However, the metrics will only be covered in depth in the next practical.
-<br>
-<br>
-To run these model evaluation metrics, you will need to go back to your ee.Classifier.smileRandomForest() function and change the setOutputMode() from ‘PROBABILITY’ to ‘CLASSIFICATION’.</p>
-
-<pre><p><code class="javascript" id="target16">var Accuracy = RFmodel.confusionMatrix().accuracy();
-print('Training Data Accuracy:', Accuracy);
-// Test accuracy
-var testData = vars.sampleRegions({
-    collection: test,
-    properties: ['Presence'],
-    // geometries: true,
-    scale: 1000
-  });
-print('Check test data:',testData.limit(5));
+<img src="img/8_img7.png" width="650" alt="" title="" />
   
-var Test = testData.classify(RFmodel);
-print(Test);
-print('ConfusionMatrix', Test.errorMatrix('Presence', 'classification'));
-print('TestAccuracy', Test.errorMatrix('Presence', 'classification').accuracy());
-print('Kappa Coefficient', Test.errorMatrix('Presence', 'classification').kappa());
-print('Producers Accuracy', Test.errorMatrix('Presence', 'classification').producersAccuracy());
-print('Users Accuracy', Test.errorMatrix('Presence', 'classification').consumersAccuracy());</code><button class="btn" id="copy-button" data-clipboard-target="#target16">Copy</button>
-                      <script>new ClipboardJS('.btn');</script></pre>
+<p>The date of the biggest change.</p>
 
-<p><strong>Practical Assignment #6</strong>
-  
-<pre><p><code class="javascript" id="target17">// Use the Solanum acuale presence data (or your own species locality data) to analyse the important environmental covariates that determine this plant's distribution patterns.
-// ..............................................
-                              
-// Comment out the import code for Bradypus and uncomment in the import code for Solanum
-// Consider adding in more or different environmental covariates
-// Run at least the MaxEnt model
-// ..............................................
-                              
-// Provide some commentary (2-3 sentences) with your assignment on the covariates that are most important contributors to explaining Solanum acuale's distribution patterns and whether the model is an accurate representation of the patterns based on the strength of the model using the AUC value. 
-// ..............................................</code><button class="btn" id="copy-button" data-clipboard-target="#target17">Copy</button>
-                        <script>new ClipboardJS('.btn');</script></pre>
-                        
-<p><strong>Sharing your code to complete the practical assignments </strong>
-To complete the practical exercise below you need to know how to share your scripts with us. Simply click on "Get Link" - the actual button NOT the dropdown arrow - Then click the "Click to copy link" button and paste that in an email to us <a href="mailto:ots.online.education@gmail.com">ots.online.education@gmail.com</a>. !NB! Please remember to add the prac number in the header.
-                     
-<hr>                       
+<img src="img/8_img8.png" width="650" alt="" title="" />
+
+<p>Histogram showing the distribution of the date of biggest change.</p>
+
+<img src="img/8_img9.png" width="650" alt="" title="" />
+
+<p>The magnitude of the biggest change. Purple shows a decrease in the chosen band (SWIR1 in this case) and orange shows an increase.</p>
+
+<img src="img/8_img10.png" width="650" alt="" title="" />
+
+<p>The total number of changes (segments) recorded. Dark colours show less changes.</p>  
+
+<hr> 
+
+<p><strong>There is no assignment for this practical</strong>
+
+To complete the practical exercise below you need to know how to share your scripts.                         
+<hr>
 </div>
 
 <div id="sidebar">
@@ -494,10 +657,10 @@ To complete the practical exercise below you need to know how to share your scri
 <li><a href="2_prac.html">[Prac2] Spectral indices</a></li>
 <li><a href="3_prac.html">[Prac3] Time series-NDVI</a></li>
 <li><a href="4_prac.html">[Prac4] Interactive App</a></li>
-<li><a href="5_prac.html">[Prac5] Change analysis</a></li>
+<li><a href="5_prac.html">[Prac5] Species patterns</a></li>
 <li><a href="6_prac.html">[Prac6] Landcover class</a></li>
 <li><a href="7_prac.html">[Prac7] Time series-Fire</a></li>
-<li class="selected"><a href="8_prac.html">[Prac8] Species patterns</a></li>
+<li class="selected"><a href="8_prac.html">[Prac8] Change analysis</a></li>
 </div>
 </nav>
 <li><a href="10_contact.html">CONTACT US</a></li>

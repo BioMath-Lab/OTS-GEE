@@ -22,7 +22,7 @@
 <h2>GOOGLE EARTH ENGINE FOR ECOLOGY AND CONSERVATION</h2>
 <p><strong>Practical 5: Species Distribution Modeling</strong>
 <br>
-Access the completed practical script <a href="https://code.earthengine.google.com/b0464a9cbeecd3d78b541be9150e595c">here</a>.
+Access the completed practical script <a href="https://code.earthengine.google.com/0102b517e4e404349a7dcb4fa741fd26?noload=true">here</a>.
 <br><br>
 <strong>Learning Objectives</strong>
 By the end of this practical you should be able to:
@@ -220,7 +220,11 @@ print(MXmodel, 'model input'); // Take a look at the model inputs
 // Take a look at the model output
 // This shows us the relative contributions of covariates to Bradypus distribution
 // and also gives us the overall AUC of the model
-print(MXmodel.explain(), 'model output');</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+print(MXmodel.explain(), 'model output');
+
+// Area Under Curve 
+var MX_AUC = MXmodel.explain().get('Training AUC').aside(print, 'MX AUC')
+// AUC is the probability that a randomly chosen presence location is ranked higher than a randomly chosen background point</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
           <script>new ClipboardJS('.btn');</script></pre>
 
 <p><strong>MaxEnt Visualisation</strong></p>
@@ -258,15 +262,16 @@ print(chart);</code><button class="btn" id="copy-button" data-clipboard-target="
 <pre><p><code class="javascript" id="target11">// Run the prediction
 var MXprediction = vars.classify(MXmodel);
   
-// Export the image to an Earth Engine asset.
-Export.image.toAsset({
-    image: MXprediction,
-    description: 'MX_prediction',
-    scale: 30,
-    region: aoi
-  });
-  
-// var MXprediction = ee.Image('users/jdmwhite/MX_prediction');</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+// // Export the image to an Earth Engine asset.
+// Export.image.toAsset({
+//   image: MXprediction,
+//   description: 'bradypus_MX_prediction',
+//   scale: 5000,
+//   region: aoi,
+// });
+
+// Load the predicted SDM image
+var MXprediction = ee.Image('users/jdmwhite/bradypus_MX_prediction');</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
                 <script>new ClipboardJS('.btn');</script></pre>
 
 <p>First we will load in a custom palette for the visualization. Next step is to add our predicted species occurrence to our map.</p>
@@ -327,15 +332,15 @@ print(chart);
 var RFprediction = vars.classify(RFmodel);
   
 // Export the image to an Earth Engine asset.
-Export.image.toAsset({
-    image: RFprediction,
-    description: 'RF_prediction',
-    scale: 30,
-    region: aoi
-  });
-  
+// Export.image.toAsset({
+//   image: RFprediction,
+//   description: 'bradypus_RF_prediction',
+//   scale: 5000,
+//   region: aoi,
+// });
+
 // Load the predicted SDM image
-// var RFprediction = ee.Image('users/jdmwhite/RF_prediction') 
+var RFprediction = ee.Image('users/jdmwhite/bradypus_RF_prediction')
   
 // Display the predicted probability of occurence results.
 Map.addLayer(RFprediction, {palette: palette_mag},'Probability of occurence (RF)', false);</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>

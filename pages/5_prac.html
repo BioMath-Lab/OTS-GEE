@@ -242,12 +242,12 @@ print('Check importance values:', MXimportance_plot);
 // Plot the resulting variable importance in a bar chart
 var chart =
 ui.Chart.feature.byProperty(MXimportance_plot)
-.setChartType('ColumnChart')
-.setOptions({
-title: 'Maxent Variable Importance',
-legend: {position: 'none'},
-hAxis: {title: 'Covariates'},
-vAxis: {title: 'Importance (%)'}
+  .setChartType('ColumnChart')
+  .setOptions({
+    title: 'Maxent Variable Importance',
+    legend: {position: 'none'},
+    hAxis: {title: 'Covariates'},
+    vAxis: {title: 'Importance (%)'}
 });
 print(chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
               <script>new ClipboardJS('.btn');</script></pre>
@@ -319,10 +319,10 @@ var chart =
   ui.Chart.feature.byProperty(RFimportance_plot)
   .setChartType('ColumnChart')
   .setOptions({
-  title: 'Random Forest Variable Importance',
-  legend: {position: 'none'},
-  hAxis: {title: 'Covariates'},
-  vAxis: {title: 'Importance'}
+    title: 'Random Forest Variable Importance',
+    legend: {position: 'none'},
+    hAxis: {title: 'Covariates'},
+    vAxis: {title: 'Importance'}
   });
 print(chart);
   

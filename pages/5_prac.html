@@ -53,12 +53,10 @@ SDMs are not a feature commonly used in GEE and therefore the documentation does
 <hr>
 
 <p><strong>Import data & Pre-process</strong></p>
-
-<br>
-<br>
 For this practical we will need two core datasets. Our geo-referenced species localities or presences and our geographic layers of environmental predictor variables. In addition to this we will need a chosen area of interest. Let's start by importing our locality data.
-
-<br>We will use data sourced from GBIF (Global Biodiversity Information Facility), which has a massive online collection of freely available biodiversity data. Our species of interest - Bradypus variegatus - is a species commonly used Species Distribution Modeling tutorials. This data has been extracted from the R dismo package. This dataset has already been uploaded as an asset and made publicly available. We load this data in as an asset and then add it to our map.
+<br>
+<br>
+We will use data sourced from GBIF (Global Biodiversity Information Facility), which has a massive online collection of freely available biodiversity data. Our species of interest - Bradypus variegatus - is a species commonly used Species Distribution Modeling tutorials. This data has been extracted from the R dismo package. This dataset has already been uploaded as an asset and made publicly available. We load this data in as an asset and then add it to our map.
 
 <pre><p><code class="javascript" id="target1">// Locality data //////////////////////////////////////////////
 
@@ -130,8 +128,6 @@ print('Check all covariates:', vars);
   <script>new ClipboardJS('.btn');</script></pre>
 
 <p><strong>Further pre-processing</strong></p>
-
-<br>
 <br>
 We now want to create pseudo-absence points, merge this together with our presence points and provide a binary presence property to each observation. The first step is to make sure all of our presence points are within our region. We then add 1 to all presence localilities. We then need to create our random pseudo-absence points and add 0 to each one. We create the same number of pseudo-absence points as there are presences, but this may depend on which model you are training your data on. Note that the generation of pseudo-absence points has a lot of literature related to it and should be carefully considered before running any SDM. View <a href="https://doi.org/10.1111/j.2041-210X.2011.00172.x" target="_blank">this</a> article for more information on pseudo-absences in SDMs.
 <br>
@@ -205,8 +201,7 @@ print('Check sampled data:', trainingData.limit(5));</code><button class="btn" i
 
 <hr>
 <p><strong>Analysis</strong></p>
-<br>
-<p>There are several different options for classifiers in GEE, which can be viewed in the Docs tab by typing ee.Classifier. We will be using the amnhMaxent() and smileRandomForest() functions as they allow for variable importance values to be extracted (which is only recently available for MaxEnt models in GEE). There are several options one can add to fine-tune the model to your own specifications. For the random forest function, the only argument that is required is the number of decision trees to use. We select the output mode of probability. However, for later model evaluation, you will need to select classification, which is not available for MaxEnt.</p>
+<br>There are several different options for classifiers in GEE, which can be viewed in the Docs tab by typing ee.Classifier. We will be using the amnhMaxent() and smileRandomForest() functions as they allow for variable importance values to be extracted (which is only recently available for MaxEnt models in GEE). There are several options one can add to fine-tune the model to your own specifications. For the random forest function, the only argument that is required is the number of decision trees to use. We select the output mode of probability. However, for later model evaluation, you will need to select classification, which is not available for MaxEnt.</br>
 <br>
 <p><strong>MaxEnt Model</strong></p>
 
@@ -291,7 +286,7 @@ Map.addLayer(MXprediction, {bands: 'probability', min: 0, max: 1, palette: palet
 <img src="img/6_img4.png" width="650" alt="" title="" />
 
 
-<p>In many cases, you will not rely on a single model and it may be preferable to use many models and find an average over several models. A short example of how to do this, is to produce a new model - this time using Random Forest - and finding the mean over our two predicted classifications.
+<p>This could quite happily be the end of the analysis. However, in many cases, you will not rely on a single model and it may be preferable to find an average (or ensemble) over several models. A short example of how to do this, is to produce a new model - this time using Random Forest - and finding the mean over our two predicted classifications.
 
 First we classify the Random Forest model. We then create a new ImageCollection of the two SDM models, before finding the mean of the two bands and then adding the ensemble prediction to the map.</p>                  
 

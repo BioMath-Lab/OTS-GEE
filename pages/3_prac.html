@@ -34,7 +34,7 @@
   <li>Plot a time-series</li>
   <li>Export data as a csv or image</li>
   </ol>
-  <p>Access the completed practical script <a href="https://code.earthengine.google.com/f6af5a8eb3a82f26985d9d44ad5276a7?noload=true">here</a>.
+  <p>Access the completed practical script <a href="https://code.earthengine.google.com/93e7bab75a9d892c851b31e9c8374f05">here</a>.
   <hr>
   
   <p><img src="img/3_img1.png" width="650" alt="" title=""/></p>
@@ -144,25 +144,31 @@ print(s2_ndvi, 's2 with NDVI');</code><button class="btn" id="copy-button" data-
   
   Lastly, we can specify details for the chart, including the type of chart and then label options. Run print() to see the output of the chart in your console. Hover your cursor over the chart to see interactive details. For more details on customizing your charts see: https://developers.google.com/chart/interactive/docs   
   
-  <pre><p><code class="javascript" id="target5">var plotNDVI = ui.Chart.image.series(NDVI, geometry, ee.Reducer.median(), 
-// we use an image based chart, with image, geom & reducer
-10, 'system:time_start') // scale, x-axis property
-      .setChartType('LineChart').setOptions({
-            title: 'NDVI time series',
-            hAxis: {title: 'Date'},
-            vAxis: {title: 'NDVI'},
-            legend: {position: "none"},
-            lineWidth: 1,
-            pointSize: 3
-        });
-        
+  <pre><p><code class="javascript" id="target5">var plotNDVI = ui.Chart.image.series({
+    imageCollection: NDVI, 
+    region: geometry, 
+    reducer: ee.Reducer.median(), 
+    scale: 10,
+    xProperty: 'system:time_start'})
+      .setChartType('LineChart')
+      .setOptions({
+          title: 'NDVI time series',
+          hAxis: {title: 'Date'},
+          vAxis: {title: 'NDVI'},
+          legend: {position: "none"},
+          lineWidth: 1,
+          pointSize: 3
+});
+  
 // Display the chart
 print(plotNDVI);</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
   <script>new ClipboardJS('.btn');</script></pre>
   
   <img src="img/3_img6.png" width="650" alt="" title="" />
   
-  <p> There are many other chart types available. To look at all of the available options see: <a href="https://developers.google.com/chart/interactive/docs" target="_blank">customisable charts</a>
+  <p> There are many other chart types available. To look at all of the available options see: 
+    <br><br><a href="https://developers.google.com/earth-engine/guides/charts_overview" target="_blank">GEE overview</a>
+    <br><a href="https://developers.google.com/chart/interactive/docs" target="_blank">Google overview</a>
   
   <p> Let's visualise the seasonal highs and lows of NDVI. To do this we will need to summarise the ImageCollection using a chosen summary statistic. In this case, we use median()
   
@@ -194,7 +200,6 @@ Map.centerObject(geometry);
 // Add layers to the map
 Map.addLayer(RGB_jan, {min:0, max:3000, bands:['B4','B3','B2']}, 'RGB Jan', false);
 Map.addLayer(RGB_aug, {min:0, max:3000, bands:['B4','B3','B2']}, 'RGB Aug', false);
-
         
 // Add layers to the map
 Map.addLayer(NDVI_jan, {min:0, max:1, palette: ndvi_pal}, 'NDVI Jan');
@@ -256,6 +261,7 @@ Export.table.toDrive({
         image: NDVI_aug,
         description: 'NDVI_Aug_example',
         scale: 100 // this can go down to 10, to match S2 original resolution
+        // when changing the scale, GEE by default uses nearest neighbour resampling
       });</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
   <script>new ClipboardJS('.btn');</script></pre>
   

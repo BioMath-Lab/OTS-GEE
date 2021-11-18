@@ -58,7 +58,7 @@ The analysis is broken into two parts. Part 1 addresses applying a classificatio
 Part 1 relies on two external libraries and shows aspects of the required workflow. I recommend trying the full workflow that relies on the excellent CCDC utilities package alone when running CCDC with your own data (<a href="https://gee-ccdc-tools.readthedocs.io/en/latest">Documentation for CCDC in GEE</a>). 
 
 <p><strong>Part 1:</strong>
-Access the completed practical script <a href="https://code.earthengine.google.com/d0a437c6ec76631601c3a0455ecad19d">here</a>.
+Access the completed practical script <a href="https://code.earthengine.google.com/ed1a4110317ac85d8d8941ea8ad444e8">here</a>.
 
 <p>The end product for Part 1:</p>
 
@@ -321,22 +321,22 @@ var classifier = ee.Classifier.smileRandomForest(50)
   classProperty: 'type'
   });
 
-var testClassification_1994 = Image_1994
+var Classification_1994 = Image_1994
   .classify(classifier.setOutputMode('CLASSIFICATION'))
-// print(testClassification_1994.first(), 'testClassification 1994');
+// print(Classification_1994.first(), 'Classification 1994');
 
 var testClassification_2003 = Image_2003
   .classify(classifier.setOutputMode('CLASSIFICATION'))
-// print(testClassification_2003.first(), 'testClassification 2003');
+// print(Classification_2003.first(), 'Classification 2003');
   
 ///////////////////////////////////////////////////////
 /// Model Evaluation //////////////////////////////////
 ///////////////////////////////////////////////////////
   
 //Test accuracy
-var test = testingData.classify(classifier);
-print('ConfusionMatrix', test.errorMatrix('type', 'classification'));
-print('TestAccuracy', test.errorMatrix('type', 'classification').accuracy());
+var testClassification = testingData.classify(classifier);
+print('ConfusionMatrix', testClassification.errorMatrix('type', 'classification'));
+print('TestAccuracy', testClassification.errorMatrix('type', 'classification').accuracy());
 print('Important variables', classifier.explain())
 </code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
               <script>new ClipboardJS('.btn');</script></pre>
@@ -352,14 +352,14 @@ var palette = palettes.crameri.bamako[10].reverse();
 
 // Add the layers to the map
 // RGB images
-Map.addLayer(Image_1994, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3}, 'test image 1994 RGB', false)
-Map.addLayer(Image_2003, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3}, 'test image 2003 RGB', false)
+Map.addLayer(Image_1994, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3}, 'image 1994 RGB', false)
+Map.addLayer(Image_2003, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3}, 'image 2003 RGB', false)
 // NDVI layers
-Map.addLayer(Image_1994, {bands: 'NDVI', min: 0, max: 1, palette: palette}, 'test image 1994 NDVI', false)
-Map.addLayer(Image_2003, {bands: 'NDVI', min: 0, max: 1, palette: palette}, 'test image 2003 NDVI', false)
+Map.addLayer(Image_1994, {bands: 'NDVI', min: 0, max: 1, palette: palette}, 'image 1994 NDVI', false)
+Map.addLayer(Image_2003, {bands: 'NDVI', min: 0, max: 1, palette: palette}, 'image 2003 NDVI', false)
 // Classifications
-Map.addLayer(testClassification_1994, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 1994', false)  
-Map.addLayer(testClassification_2003, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2003', false)  
+Map.addLayer(Classification_1994, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'classification 1994', false)  
+Map.addLayer(Classification_2003, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'classification 2003', false)  
 
 /////////////////////////////
 // Simple Binary Change /////

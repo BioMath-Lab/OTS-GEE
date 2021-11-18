@@ -76,8 +76,12 @@ Access the completed practical script <a href="https://code.earthengine.google.c
 ///// Set map options ///////////
 /////////////////////////////////
   
-Map.centerObject(studyRegion, 9);
-  
+var renost_all = ee.FeatureCollection('users/jdmwhite/renosterveld_veg_types')
+var studyRegion = renost_all.filter(ee.Filter.eq('NAME','Central Rens Shale Renosterveld'))
+
+Map.centerObject(studyRegion, 10)
+Map.addLayer(studyRegion, {}, 'studyRegion', false)
+
 /////////////////////////////////
 ///// Load extra libraries //////
 /////////////////////////////////
@@ -98,46 +102,51 @@ var palettes = require('users/gena/packages:palettes');</code><button class="btn
   
 // Parameters for change detection algorithm
 var changeDetection = {
-  breakpointBands: ['GREEN','RED','NIR','SWIR1','SWIR2','NDFI'], // bands to use for regression
+  breakpointBands: ['GREEN','RED','NIR','SWIR1','SWIR2','NDVI'], // bands to use for regression
   tmaskBands: ['GREEN','SWIR2'],
   lambda: 20/10000, // tuning parameter
   // minObservations: 6, // observation window
   // chiSquareProbability: .99, // threshold for change detection
   // minNumOfYearsScaler: 1.33, // min number of years to apply new fitting
-  // dateFormat: 2,
+  dateFormat: 0, // 0 is for Julian days; 2 is Unix (ms since 1970)
+  // // 0 works for segments; 2 works for raw CCD results (i.e Part 2)
   // maxIterations: 25000 // number of runs for LASSO regression convergence
 }
-  
+
 // Overall parameters
 var params = {
-  start: '2000-01-01',
-  end: '2020-01-01',
+  start: '1993-01-01',
+  end: '2003-01-01',
   ChangeDetection: changeDetection,
   StudyRegion: studyRegion
-  }
+}
   
 ///////////////////////////////////////////
 ///// Import & Pre-Process Landsat Data ///
 ///////////////////////////////////////////
   
-// Filter by date and a location in Brazil
+// Filter by date and a location in South Africa
 var filteredLandsat = utils.Inputs.getLandsat() // using the utility package loaded earlier
-      .filterBounds(params.StudyRegion)
-      .map(function(image) {return image.clip(studyRegion)})
-      .filterDate(params.start, params.end)
-  
-print('collection size:',filteredLandsat.size())
-  
+    .filterBounds(params.StudyRegion)
+    .map(function(image) {return image.clip(studyRegion)})
+    .filterDate(params.start, params.end)
+    .select(['BLUE','GREEN','RED','NIR','SWIR1','SWIR2','NDVI'])
+
+print('Collection size:', filteredLandsat.size())
+// print('Collection:', filteredLandsat)
+
 // Investigate landsat data
 // Add the image with the least cloud to the map
 Map.addLayer(filteredLandsat.sort('CLOUD_COVER').first(), 
-                {bands: ['RED', 'GREEN', 'BLUE'],min: 0,max: 0.3, gamma: 1.2}, 'Least cloudy image', false);
+              {bands: ['RED', 'GREEN', 'BLUE'] ,min: 0, max: 0.15}, 'Least cloudy image RGB', false);
+Map.addLayer(filteredLandsat.sort('CLOUD_COVER').first(), 
+              {bands: ['NIR', 'RED', 'GREEN'] ,min: 0, max: 0.6}, 'Least cloudy image FCC', false);
 // Save the date of the image, which we use for creating a training data set
 var img_date = ee.Date(filteredLandsat.sort('CLOUD_COVER').first().get('system:time_start')).format("yyyy-MM-dd").aside(print, 'Date cloud free image');
-  
+
 // At this point you can create your training data
 // Use the point tool to create classes of data based on the cloudless image
-  
+
 // Add our landsat dataset to the params dictionary
 params.ChangeDetection['collection'] = filteredLandsat
 print('Parameters:', params);</code><button class="btn" id="copy-button" data-clipboard-target="#target2">Copy</button>
@@ -152,25 +161,33 @@ print('Parameters:', params);</code><button class="btn" id="copy-button" data-cl
 ///////////////////////////////////////////
   
 var results = ee.Algorithms.TemporalSegmentation.Ccdc(params.ChangeDetection)
-print('CCDC results:',results);
-  
+print('CCDC results:',results.bandNames());
+
 // Add the harmonic regression segments to the chart
 // Drop a point within your study region to display the chart
-  
+
 temporalSegmentation.chartPoint({
-      image: results,
-      point: geometry,
-      bandName: 'NDFI',
-      collection: filteredLandsat,
-      callback: function (chart) {
-        print(chart)
-      }
+    image: results,
+    point: change_point_3,
+    bandName: 'NDVI',
+    collection: filteredLandsat,
+    callback: function (chart) {
+      print(chart
+      .setOptions({
+    title: 'Landsat: Change Point 1',
+    vAxis: {title: 'NDVI', maxValue: 1, minValue: 0},
+    hAxis: {title: 'Date'},
+    pointSize: 0, lineWidth: 1.5,
+    series: {0: {pointSize: 1, lineWidth: 0}}
+      })
+    )
+  }
 })</code><button class="btn" id="copy-button" data-clipboard-target="#target3">Copy</button>
       <script>new ClipboardJS('.btn');</script></pre>
 
 <img src="img/8_img2.png" width="650" alt="" title="" />
 
-<p>In this chart, the CCDC algorithm suggests there was a change in land cover around early 2005. The y-axis shows changes in NDFI.</p>
+<p>In this chart, the CCDC algorithm suggests there was a change in land cover around late 2000. The y-axis shows changes in NDVI.</p>
 
 <p>At this point, it is a good idea to save the CCDC output to your asset. This will help further down the line, by saving memory and will make your code run a lot more smoothly. Once export, you can comment out this code and load the image back in from your assets.</p>
 
@@ -178,34 +195,34 @@ temporalSegmentation.chartPoint({
 /// Only run this bit once & save results to ASSETS ///
 ///////////////////////////////////////////////////////
   
-// var segments = temporalSegmentation.Segments(results) // Create temporal segments
-  
+var segments = temporalSegmentation.Segments(results) // Create temporal segments
+
 // This is the image you will use for the rest of Part 1
-  
+
 // // Export as asset. Include same options as for regular exports.
 // // Skip the image and pyramidingPolicy though, which gets defaulted.
 // segments.toAsset({
-//   description: 'ccdc_segments',
+//   description: 'renost_ccdc_segments_1993_2003_0_v1',
 //   region: studyRegion,
 //   scale: 30,
 //   crs: 'EPSG:4326'
 // })
-  
-// This is the image you will use for Part 2
-  
+
+// // This is the image you will use for Part 2
+
 // Export.image.toAsset({
 //   image: results,
 //   scale: 30,
-//   description: 'ccdc_L_raw',
+//   description: 'renost_ccdc_raw_1993_2003_2_v1',
 //   maxPixels: 1e13,
 //   region: studyRegion,
 //   pyramidingPolicy: {
 //   '.default': 'sample'
 //   }
 // })
-  
+
 // Load the CCDC results back in
-var segmentsImage = ee.Image('users/jdmwhite/ccdc_segments') // Load CCDC asset
+var segmentsImage = ee.Image('users/jdmwhite/renost_ccdc_segments_1993_2003_0_v1') // Load CCDC asset
 var segments = temporalSegmentation.Segments(segmentsImage) // Create temporal segments</code><button class="btn" id="copy-button" data-clipboard-target="#target4">Copy</button>
         <script>new ClipboardJS('.btn');</script></pre>
 
@@ -218,49 +235,49 @@ var segments = temporalSegmentation.Segments(segmentsImage) // Create temporal s
 // Prepare the training point data
 // Convert the ee.Geometry.Multipoint to FeatureCollections and set type & date values
   
-// Forest
-var forest = ee.FeatureCollection(forest.coordinates().map(function(p) {
-    var type = ee.Feature(ee.Geometry.Point(p), {type: 1}) // 1 for forest
-    var date_type = type.set('date', img_date)
-    return date_type}))
-  
-// Other
-var other = ee.FeatureCollection(other.coordinates().map(function(p) {
-    var type = ee.Feature(ee.Geometry.Point(p), {type: 0}) // 0 for other
-    var date_type = type.set('date', img_date)
-    return date_type}))
-  
+// Renosterveld
+var Renost = ee.FeatureCollection(renost.coordinates().map(function(p) {
+  var type = ee.Feature(ee.Geometry.Point(p), {type: 1}) // 1 for Renosterveld
+  var date_type = type.set('date', img_date)
+  return date_type}))
+
+// Agriculture
+var Agri = ee.FeatureCollection(agri.coordinates().map(function(p) {
+  var type = ee.Feature(ee.Geometry.Point(p), {type: 0}) // 0 for Agriculture
+  var date_type = type.set('date', img_date)
+  return date_type}))
+
 //Stratified random sampling for each class
-// First for forest
-var forest_table = forest.randomColumn({seed: 16});
-var forest_training = forest_table.filter(ee.Filter.lt('random', 0.80));
-var forest_test = forest_table.filter(ee.Filter.gte('random', 0.80));
-  
-// Next for other
-var other_table = other.randomColumn({seed: 16});
-var other_training = other_table.filter(ee.Filter.lt('random', 0.80));
-var other_test = other_table.filter(ee.Filter.gte('random', 0.80));
-  
-//Combine our forest & other reference points for our training & test data
-var trainingPoints = forest_training.merge(other_training);
-var testingPoints = forest_test.merge(other_test).aside(print, 'test data');
-  
+// First for Renosterveld
+var Renost_table = Renost.randomColumn({seed: 16});
+var Renost_training = Renost_table.filter(ee.Filter.lt('random', 0.80));
+var Renost_test = Renost_table.filter(ee.Filter.gte('random', 0.80));
+
+// Next for Agriculture
+var Agri_table = Agri.randomColumn({seed: 16});
+var Agri_training = Agri_table.filter(ee.Filter.lt('random', 0.80));
+var Agri_test = Agri_table.filter(ee.Filter.gte('random', 0.80));
+
+//Combine our Renosterveld & Agriculture reference points for our training & test data
+var trainingPoints = Renost_training.merge(Agri_training);
+var testingPoints = Renost_test.merge(Agri_test)//.aside(print, 'test data');
+
 // Function to remove the random column, as it isn't needed for later
 var removeProperty = function(feat, property) {
-    var properties = feat.propertyNames()
-    var selectProperties = properties.filter(ee.Filter.neq('item', property))
-    return feat.select(selectProperties)
+  var properties = feat.propertyNames()
+  var selectProperties = properties.filter(ee.Filter.neq('item', property))
+  return feat.select(selectProperties)
 }
-  
+
 // remove the random property in each feature
 var trainingPoints = trainingPoints.map(function(feat) {
-    return removeProperty(feat, 'random')
+  return removeProperty(feat, 'random')
 })
-print(trainingPoints, 'training points')
-  
-  var testingPoints = testingPoints.map(function(feat) {
-    return removeProperty(feat, 'random')
-  })</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
+print(trainingPoints.first(), 'training points')
+
+var testingPoints = testingPoints.map(function(feat) {
+  return removeProperty(feat, 'random')
+})</code><button class="btn" id="copy-button" data-clipboard-target="#target5">Copy</button>
           <script>new ClipboardJS('.btn');</script></pre>
   
 <p>We now want to sampe the pixels for each point in the training and testing data. First use the mapSegment function to extract information for each temporal segment. Then select the images (by date) that you wish to classify. Lastly, sample the data for both training and testing datasets.</p>
@@ -268,28 +285,28 @@ print(trainingPoints, 'training points')
 <pre><p><code class="javascript" id="target6">// Function to extract an image from a segment. Used when sampling and classifying.
 // Provide whatever information you think helps the classification in this image
 var mapSegment = function(segment) {
-    var image = segment.toImage() 
-    var rmse = image.select('.*_rmse')
-    var ndfiCoefs = segment.coefs('NDFI')
-    var fit = segment.fit()
-    return ee.Image([rmse, ndfiCoefs, fit])
+  var image = segment.toImage() 
+  var rmse = image.select(['.*_rmse'])
+  var ndviCoefs = segment.coefs('NDVI')
+  var fit = segment.slice()
+  return ee.Image([fit, rmse, ndviCoefs])
 }
-  
+
 // Create regression for two dates to provide quick feedback on classification results
-var Segment_2005 = segments.findByDate('2001-01-01', 'closest') // selects image closest to this date
-var Image_2005 = mapSegment(Segment_2005)
-  
-var Segment_2015 = segments.findByDate('2015-01-01', 'closest') // selects image closest to this date
-var Image_2015 = mapSegment(Segment_2015)
-print('test image:', Image_2015);
-  
+var Segment_1994 = segments.findByDate('1994-01-01', 'closest') // selects image closest to this date
+var Image_1994 = mapSegment(Segment_1994)
+
+var Segment_2003 = segments.findByDate('2002-01-01', 'closest') // selects image closest to this date
+var Image_2003 = mapSegment(Segment_2003)
+print('test image bands:', Image_2003.bandNames());
+
 // create the training data by overlaying the ref data on the segments
 var trainingData = segments.sample(trainingPoints, mapSegment, 30) // select scale
-print('trainingData', trainingData)
-  
+print('trainingData:', trainingData.first())
+
 // create the training data by overlaying the ref data on the segments
 var testingData = segments.sample(testingPoints, mapSegment, 30) // select scale
-// print('testingData', trainingData)</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
+print('testingData:', testingData.first())</code><button class="btn" id="copy-button" data-clipboard-target="#target6">Copy</button>
             <script>new ClipboardJS('.btn');</script></pre>
 
 <p>Now we can train our classifier using a Random Forest. Once the classifier is trained, classify both extracted images. Next you can run the model evaluation.</p>
@@ -299,151 +316,84 @@ var testingData = segments.sample(testingPoints, mapSegment, 30) // select scale
 ///////////////////////////////////////////////////////
   
 var classifier = ee.Classifier.smileRandomForest(50)
-    .train({
-    features: trainingData,
-    classProperty: 'type'
-});
-  
-var testClassification_2005 = Image_2005
-    .classify(classifier.setOutputMode('CLASSIFICATION'))
-print(testClassification_2005, 'testClassification 2005');
-  
-var testClassification_2015 = Image_2015
-    .classify(classifier.setOutputMode('CLASSIFICATION'))
-// print(testClassification_2015, 'testClassification 2015');
+  .train({
+  features: trainingData,
+  classProperty: 'type'
+  });
+
+var testClassification_1994 = Image_1994
+  .classify(classifier.setOutputMode('CLASSIFICATION'))
+// print(testClassification_1994.first(), 'testClassification 1994');
+
+var testClassification_2003 = Image_2003
+  .classify(classifier.setOutputMode('CLASSIFICATION'))
+// print(testClassification_2003.first(), 'testClassification 2003');
   
 ///////////////////////////////////////////////////////
 /// Model Evaluation //////////////////////////////////
 ///////////////////////////////////////////////////////
   
 //Test accuracy
-var Test = testingData.classify(classifier);
-print('ConfusionMatrix', Test.errorMatrix('type', 'classification'));
-print('TestAccuracy', Test.errorMatrix('type', 'classification').accuracy());
-print('Kappa Coefficient', Test.errorMatrix('type', 'classification').kappa());
-print('Producers Accuracy', Test.errorMatrix('type', 'classification').producersAccuracy());
-print('Users Accuracy', Test.errorMatrix('type', 'classification').consumersAccuracy());</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
+var test = testingData.classify(classifier);
+print('ConfusionMatrix', test.errorMatrix('type', 'classification'));
+print('TestAccuracy', test.errorMatrix('type', 'classification').accuracy());
+print('Important variables', classifier.explain())
+</code><button class="btn" id="copy-button" data-clipboard-target="#target7">Copy</button>
               <script>new ClipboardJS('.btn');</script></pre>
 
-<p>The final step in Part 1, is to visualise the images and calculate a simple binary change from the two images (2015 minus 2005). We will add layers for RGB and NDFI and then add the classified layers.</p>
+<p>The final step in Part 1, is to visualise the images and calculate a simple binary change from the two images (2015 minus 2005). We will add layers for RGB and NDVI and then add the classified layers.</p>
 
 <pre><p><code class="javascript" id="target8">///////////////////////////////////////////////////////
 /// Visualisation /////////////////////////////////////
 ///////////////////////////////////////////////////////
   
-// Creat a palette for the NDFI layer
+// Creat a palette for the NDVI layer
 var palette = palettes.crameri.bamako[10].reverse();
-  
+
 // Add the layers to the map
 // RGB images
-Map.addLayer(Image_2005, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2005 RGB', false)
-Map.addLayer(Image_2015, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3, gamma:1.3}, 'test image 2015 RGB', false)
-// NDFI layers
-Map.addLayer(Image_2005, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2005 NDFI', false)
-Map.addLayer(Image_2015, {bands: 'NDFI', min: -1, max: 1, palette: palette}, 'test image 2015 NDFI', false)
+Map.addLayer(Image_1994, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3}, 'test image 1994 RGB', false)
+Map.addLayer(Image_2003, {bands: ['RED', 'GREEN', 'BLUE'], min:0, max:0.3}, 'test image 2003 RGB', false)
+// NDVI layers
+Map.addLayer(Image_1994, {bands: 'NDVI', min: 0, max: 1, palette: palette}, 'test image 1994 NDVI', false)
+Map.addLayer(Image_2003, {bands: 'NDVI', min: 0, max: 1, palette: palette}, 'test image 2003 NDVI', false)
 // Classifications
-Map.addLayer(testClassification_2005, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2005', false)  
-Map.addLayer(testClassification_2015, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2015', false)  
-  
+Map.addLayer(testClassification_1994, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 1994', false)  
+Map.addLayer(testClassification_2003, {min: 0, max: 1, palette: ['FFE599','00404D']}, 'test classification 2003', false)  
+
 /////////////////////////////
 // Simple Binary Change /////
 /////////////////////////////
-  
-// Subtract the 2015 classification from the 2005 classification
-var coverChange = testClassification_2015.subtract(testClassification_2005);
-  
+
+// Subtract the 2003 classification from the 1993 classification
+var coverChange = testClassification_2003.subtract(testClassification_1994);
+
 // Add the layer to the map. Red = loss; Grey = no change; Green = gain
-Map.addLayer(coverChange,{palette: ['red','grey','green'], min: -1, max: 1},'Forest Cover Change 2005-2015',false);
-  
+Map.addLayer(coverChange,{palette: ['red','grey','green'], min: -1, max: 1},'Renosterveld Cover Change 1994-2003',false);
+
 // Let's create a chart of the area of each class
 var labels =[ 'gain','no change','loss' ];
 var areaClass = coverChange.eq([1, 0, -1]).rename(labels);
 // Calculate the area for each pixel
 var areaEstimate = areaClass.multiply(ee.Image.pixelArea()).divide(1e6);
-  
+
 // Set up the chart
 var chart = ui.Chart.image.regions({
-    image: areaEstimate,
-    regions: studyRegion,
-    reducer: ee.Reducer.sum(),
-    scale: 1000,
-  }).setChartType('PieChart').setOptions({
-    width: 250,
-    height: 350,
-    title: 'Area by class (sqkm)',
-    // is3D: true,
-    colors: ['green','red','grey'],
+  image: areaEstimate,
+  regions: studyRegion,
+  reducer: ee.Reducer.sum(),
+  scale: 1000,
+}).setChartType('PieChart').setOptions({
+  width: 250,
+  height: 350,
+  title: 'Renosterveld Change (sqkm)',
+  // is3D: true,
+  colors: ['green','red','grey'],
 });
-print(chart);
-
-////////////////////////////
-////// legend for classes //
-////////////////////////////
-  
-// See: https://mygeoblog.com/2016/12/09/add-a-legend-to-to-your-gee-map/
-  
-// set position of panel
-var legend = ui.Panel({
-    style: {
-      position: 'bottom-left',
-      padding: '8px 15px'
-    }
-});
-   
-// Create legend title
-var legendTitle = ui.Label({
-    value: 'Land Cover Classes',
-    style: {
-      fontWeight: 'bold',
-      fontSize: '18px',
-      margin: '0 0 4px 0',
-      padding: '0'
-      }
-});
-   
-// Add the title to the panel
-legend.add(legendTitle);
-   
-// Creates and styles 1 row of the legend.
-var makeRow = function(color, name) {
-   
-  // Create the label that is actually the colored box.
-        var colorBox = ui.Label({
-          style: {
-            backgroundColor: '#' + color,
-            // Use padding to give the box height and width.
-            padding: '8px',
-            margin: '0 0 4px 0'
-          }
-        });
-   
-  // Create the label filled with the description text.
-        var description = ui.Label({
-          value: name,
-          style: {margin: '0 0 4px 6px'}
-        });
-   
-  // return the panel
-        return ui.Panel({
-          widgets: [colorBox, description],
-          layout: ui.Panel.Layout.Flow('horizontal')
-        });
-};
-   
-//  Palette with the colors
-var palette =['00404D','FFE599'];
-   
-// name of the legend
-var names = ['Forest','Other'];
-   
-// Add color and names
-for (var i = 0; i < 2; i++) {
-    legend.add(makeRow(palette[i], names[i]));
-}  
-   
-// add legend to map
-Map.add(legend);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
+print(chart);</code><button class="btn" id="copy-button" data-clipboard-target="#target8">Copy</button>
                 <script>new ClipboardJS('.btn');</script></pre>
+
+<p>The GEE code includes a section on creating a legend with two classes. The code segment is quite long, so it has been excluded from this page. The output images for the above script are shown below:</p>
 
 <img src="img/8_img3.png" width="650" alt="" title="" />
 
@@ -451,7 +401,7 @@ Map.add(legend);</code><button class="btn" id="copy-button" data-clipboard-targe
 
 <img src="img/8_img4.png" width="650" alt="" title="" />
 
-<p>The NDFI images (darker pixels have a higher NDFI value).</p>
+<p>The NDVI images (darker pixels have a higher NDVI value).</p>
 
 <img src="img/8_img5.png" width="650" alt="" title="" />
 
@@ -478,7 +428,12 @@ Access the completed practical script <a href="https://code.earthengine.google.c
 ///// Set map options ///////////
 /////////////////////////////////
   
-Map.centerObject(studyRegion, 9);
+// Create a polygon/import a featureCollection
+
+var renost_all = ee.FeatureCollection('users/jdmwhite/renosterveld_veg_types')
+var studyRegion = renost_all.filter(ee.Filter.eq('NAME','Central Rens Shale Renosterveld'))
+
+// Map.centerObject(studyRegion, 10)
   
 /////////////////////////////////
 ///// Load extra libraries //////
@@ -497,19 +452,20 @@ var palettes = require('users/gena/packages:palettes');</code><button class="btn
 ///////////////////////////////////////////
   
 // Load the CCDC results back in
-var results = ee.Image("users/jdmwhite/ccdc_Rondonia_example")
+var results = ee.Image("users/jdmwhite/renost_ccdc_raw_1993_2003_2_v1")
+print(results)
   
 ///////////////////////////////////////////
 ///// Process /////////////////////////////
 ///////////////////////////////////////////
   
 // Spectral band names. This list of all the bands we are interested in
-var BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2']
-  
+var BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'NDVI']
+
 // Names of the temporal segments and the number. There are not likely to be more than 
-// 10 segments for each pixel
-var SEGS = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10"]
-  
+// 4 segments for each pixel
+var SEGS = ["S1", "S2", "S3", "S4"]
+
 // Obtain CCDC results in 'regular' ee.Image format
 var ccdImage = utils.CCDC.buildCcdImage(results, SEGS.length, BANDS)
 print('ccdImage:',ccdImage);</code><button class="btn" id="copy-button" data-clipboard-target="#target10">Copy</button>
@@ -518,21 +474,23 @@ print('ccdImage:',ccdImage);</code><button class="btn" id="copy-button" data-cli
 <p>We now run the filterMag function, which extracts three bands from the 'synthetic' image. This includes the time of the biggest break (tBreak), the total number of breaks (numTbreak) and the magnitude of the biggest break (MAG). Select a band to use (as different bands may produce different segmentation) and the number of segments to extract and ensure that your dates are correctly formatted.</p>  
 
 <pre><p><code class="javascript" id="target11">// Convert the date to a format required
-  var changeStart = '1999-01-01'
-  var changeEnd = '2020-01-01'
-  var startParams = {inputFormat: 3, inputDate: changeStart, outputFormat: 1}
-  var endParams = {inputFormat: 3, inputDate: changeEnd, outputFormat: 1}
-  var formattedStart = utils.Dates.convertDate(startParams).aside(print)
-  var formattedEnd = utils.Dates.convertDate(endParams).aside(print)
-  
-  // Run the filterMag function from the utils package
-  // This extracts information on the time of the biggest break (tBreak)
-  // the magnitude of the biggest break (MAG) and the total number of breaks (numTbreak)
-  var filteredChanges = utils.CCDC.filterMag(ccdImage, formattedStart, formattedEnd, 'SWIR1', SEGS)
-  print('filterChanges:',filteredChanges);</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
+var changeStart = '1993-01-01'
+var changeEnd = '2002-01-01'
+var startParams = {inputFormat: 3, inputDate: changeStart, outputFormat: 2} // 3 is for string
+var endParams = {inputFormat: 3, inputDate: changeEnd, outputFormat: 2} // 2 is for milliseconds since 1970
+var formattedStart = utils.Dates.convertDate(startParams).aside(print)
+var formattedEnd = utils.Dates.convertDate(endParams).aside(print)
+    
+// Run the filterMag function from the utils package
+// This extracts information on the time of the biggest break (tBreak)
+// the magnitude of the biggest break (MAG) and the total number of breaks (numTbreak)
+// for a specified band (in this case NDVI)
+
+var filteredChanges = utils.CCDC.filterMag(ccdImage, formattedStart, formattedEnd, 'NDVI', SEGS)
+print('filterChanges:',filteredChanges);</code><button class="btn" id="copy-button" data-clipboard-target="#target11">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
   
-<p>Now visualise the different images and run a quick histogram to see the distribution of the major change dates.</p>
+<p>Now visualise the different images and run a quick histogram to see the distribution of the major change dates. The full GEE code, shows how to create legends and how to customise the basemap. These are long code segments, so they have been excluded from this page.</p>
 
 <pre><p><code class="javascript" id="target12">///////////////////////////////////////////
 ///// Visualisation ///////////////////////
@@ -540,72 +498,31 @@ print('ccdImage:',ccdImage);</code><button class="btn" id="copy-button" data-cli
   
 // A chosen palette
 var change_date_palette = palettes.matplotlib.plasma[7];
-var mag_palette = palettes.colorbrewer.PuOr[7];
-var num_breaks_palette = palettes.matplotlib.viridis[7];
+var mag_palette = palettes.colorbrewer.PiYG[7];
+var num_breaks_palette = palettes.crameri.buda[10];
+
+// Convert millis to fractional year
+// divide by no. of millis in one year; add on 1970 as baseline
+var tBreak = filteredChanges.select('tBreak').divide(31556952000).add(1970) 
   
 // The time of break
-Map.addLayer(filteredChanges.select('tBreak'), {min: 1999, max: 2020, palette: change_date_palette}, 'Change date');
+Map.addLayer(tBreak, {min: 1993, max: 2002, palette: change_date_palette}, 'Change date');
 // The magnitude of break
-Map.addLayer(filteredChanges.select('MAG'), {min: -0.2, max: 0.2, palette: mag_palette}, 'Magnitude');
+Map.addLayer(filteredChanges.select('MAG'), {min: -0.6, max: 0.6, palette: mag_palette}, 'Magnitude');
 // The number of breaks
-Map.addLayer(filteredChanges.select('numTbreak'), {min: 1, max: 9, palette: num_breaks_palette}, 'Number of breaks');
-  
-// Histogram of Change date
+Map.addLayer(filteredChanges.select('numTbreak'), {min: 1, max: 4, palette: num_breaks_palette}, 'Number of breaks');
+
+// Histogram of date of change
 // Make sure you have your original study region defined
 var hist = ui.Chart.image.histogram({
-    image:filteredChanges.select('tBreak'),
-    region:studyRegion,
-    minBucketWidth: 1,
-    scale: 1000,
+  image:tBreak,
+  region:studyRegion,
+  minBucketWidth: 1,
+  scale: 1000,
 })
 print(hist);
   
-// Add in legend for aid in visualisation
-  
-///////// tBreak
-  
-// Styling for the legend title.
-var LEGEND_TITLE_STYLE = {
-    fontSize: '16px',
-    // fontWeight: 'bold',
-    stretch: 'horizontal',
-    textAlign: 'left',
-    margin: '4px',
-  };
-  
-function ColorBar(palette) {
-    return ui.Thumbnail({
-      image: ee.Image.pixelLonLat().select(0),
-      params: {
-        bbox: [0, 0, 1, 0.1],
-        dimensions: '100x10',
-        format: 'png',
-        min: 0, // change min value
-        max: 1, // change max value
-        palette: change_date_palette, // chose the correct palette
-      },
-      style: {stretch: 'horizontal', margin: '0px 8px'},
-    });
-}
-  
-// Returns our labeled legend, with a color bar and three labels representing
-// the minimum, middle, and maximum values.
-function makeLegend() {
-    var labelPanel = ui.Panel(
-        [ui.Label('1999', {margin: '4px 8px'}), // change min label here
-        ui.Label('',{margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
-        ui.Label('2020', {margin: '4px 8px'})], // change max label here
-        ui.Panel.Layout.flow('horizontal'));
-    return ui.Panel([ColorBar(change_date_palette.palette), labelPanel]);
-}
-  
-// Assemble the legend panel.
-Map.add(ui.Panel(
-      [
-        ui.Label('Change Date', LEGEND_TITLE_STYLE), makeLegend() // change title here
-        ],
-      ui.Panel.Layout.flow('vertical'),
-      {width: '230px', position: 'bottom-left'})); // change location here to chose where to put legend</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
+// Add in legend for aid in visualisation</code><button class="btn" id="copy-button" data-clipboard-target="#target12">Copy</button>
     <script>new ClipboardJS('.btn');</script></pre>
 
 <img src="img/8_img7.png" width="650" alt="" title="" />
@@ -627,8 +544,6 @@ Map.add(ui.Panel(
 <hr> 
 
 <p><strong>There is no assignment for this practical</strong>
-
-To complete the practical exercise below you need to know how to share your scripts.                         
 <hr>
 </div>
 
